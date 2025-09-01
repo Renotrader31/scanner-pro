@@ -7,7 +7,7 @@ const MassScanner = () => {
   const [scanResults, setScanResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [scanCriteria, setScanCriteria] = useState([]);
-  const [selectedScan, setSelectedScan] = useState('MOMENTUM_BREAKOUT');
+  const [selectedScan, setSelectedScan] = useState('TOP_GAINERS');
   const [filters, setFilters] = useState({
     minPrice: 1,
     maxPrice: 10000,
@@ -24,8 +24,14 @@ const MassScanner = () => {
   useEffect(() => {
     fetchScanCriteria();
     fetchSectors();
-    performScan(); // Initial scan
   }, []);
+
+  useEffect(() => {
+    // Auto-scan when scan type or filters change
+    if (scanCriteria.length > 0) {
+      performScan();
+    }
+  }, [selectedScan, filters, sortConfig]);
 
   const fetchScanCriteria = async () => {
     try {
@@ -38,8 +44,12 @@ const MassScanner = () => {
       } else {
         // Set default criteria if API fails
         setScanCriteria([
+          { id: 'TOP_GAINERS', name: 'Top Gainers', description: 'Stocks with any positive movement' },
+          { id: 'TOP_LOSERS', name: 'Top Losers', description: 'Stocks with negative movement' },
+          { id: 'HIGH_VOLUME', name: 'High Volume', description: 'Stocks with above-average volume activity' },
+          { id: 'MODERATE_MOVERS', name: 'Moderate Movers', description: 'Stocks with moderate price movement (0.5%+)' },
+          { id: 'ALL_STOCKS', name: 'All Stocks', description: 'Show all stocks for testing - minimal filtering' },
           { id: 'MOMENTUM_BREAKOUT', name: 'Momentum Breakout', description: 'Stocks breaking above 20-day MA with high volume' },
-          { id: 'VOLUME_SURGE', name: 'Volume Surge', description: 'High volume with price acceleration' },
           { id: 'OVERSOLD_BOUNCE', name: 'Oversold Bounce', description: 'Oversold stocks showing early reversal signs' }
         ]);
       }
@@ -47,8 +57,12 @@ const MassScanner = () => {
       console.error('Error fetching scan criteria:', error);
       // Set default criteria
       setScanCriteria([
+        { id: 'TOP_GAINERS', name: 'Top Gainers', description: 'Stocks with any positive movement' },
+        { id: 'TOP_LOSERS', name: 'Top Losers', description: 'Stocks with negative movement' },
+        { id: 'HIGH_VOLUME', name: 'High Volume', description: 'Stocks with above-average volume activity' },
+        { id: 'MODERATE_MOVERS', name: 'Moderate Movers', description: 'Stocks with moderate price movement (0.5%+)' },
+        { id: 'ALL_STOCKS', name: 'All Stocks', description: 'Show all stocks for testing - minimal filtering' },
         { id: 'MOMENTUM_BREAKOUT', name: 'Momentum Breakout', description: 'Stocks breaking above 20-day MA with high volume' },
-        { id: 'VOLUME_SURGE', name: 'Volume Surge', description: 'High volume with price acceleration' },
         { id: 'OVERSOLD_BOUNCE', name: 'Oversold Bounce', description: 'Oversold stocks showing early reversal signs' }
       ]);
     }
@@ -96,8 +110,11 @@ const MassScanner = () => {
         setScanResults(data.results);
         setSummary(data.summary);
         setTotalScanned(data.summary.totalScanned);
+        console.log(`Scan completed: ${data.results.length} results found from ${data.summary.totalScanned} stocks`);
       } else {
         console.error('Scan failed:', data.error);
+        setScanResults([]);
+        setSummary({ totalScanned: 0, totalFiltered: 0, totalReturned: 0 });
       }
     } catch (error) {
       console.error('Error performing scan:', error);
@@ -466,9 +483,20 @@ const MassScanner = () => {
         </div>
 
         {scanResults.length === 0 && !loading && (
-          <div className="p-8 text-center text-gray-400">
-            <Search size={48} className="mx-auto mb-4 opacity-50" />
-            <p>No results found. Try adjusting your scan criteria or filters.</p>
+          <div className="p-8 text-center">
+            <Search size={48} className="mx-auto mb-4 opacity-50 text-gray-400" />
+            <h3 className="text-xl font-bold text-gray-300 mb-2">No Results Found</h3>
+            <p className="text-gray-400 mb-4">
+              Scanned {totalScanned} stocks but none matched the "{selectedCriteria?.name}" criteria.
+            </p>
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 max-w-md mx-auto">
+              <p className="text-sm text-blue-300 mb-2">💡 Try these scanners for better results:</p>
+              <div className="space-y-1 text-sm text-gray-300">
+                <div>• <strong>Top Gainers</strong> - Shows any positive movers</div>
+                <div>• <strong>High Volume</strong> - Active stocks regardless of direction</div>
+                <div>• <strong>All Stocks</strong> - View all available stocks</div>
+              </div>
+            </div>
           </div>
         )}
       </div>

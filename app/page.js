@@ -41,7 +41,7 @@ export default function Home() {
     const interval = setInterval(() => {
       updateMarketStatus();
       refreshLiveData();
-    }, 30000);
+    }, 60000); // Reduced from 30s to 60s to prevent API overload
     return () => clearInterval(interval);
   }, []);
 
@@ -70,20 +70,27 @@ export default function Home() {
     for (const item of watchlist) {
       try {
         const res = await fetch(`/api/polygon?endpoint=/v2/aggs/ticker/${item.ticker}/prev`);
-        const data = await res.json();
-        if (data.results?.[0]) {
-          const r = data.results[0];
-          updatedWatchlist.push({
-            ...item,
-            price: r.c,
-            change: ((r.c - r.o) / r.o * 100).toFixed(2),
-            volume: r.v,
-            high: r.h,
-            low: r.l
-          });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.results?.[0]) {
+            const r = data.results[0];
+            updatedWatchlist.push({
+              ...item,
+              price: r.c,
+              change: ((r.c - r.o) / r.o * 100).toFixed(2),
+              volume: r.v,
+              high: r.h,
+              low: r.l
+            });
+          }
+        } else {
+          // Silently skip failed API calls to avoid 500 error spam
+          console.log(`API temporarily unavailable for ${item.ticker}`);
+          updatedWatchlist.push(item); // Keep existing data
         }
       } catch (error) {
-        console.error(`Error fetching ${item.ticker}:`, error);
+        console.log(`Network error for ${item.ticker}, keeping existing data`);
+        updatedWatchlist.push(item); // Keep existing data
       }
     }
     setWatchlist(updatedWatchlist);
@@ -94,6 +101,12 @@ export default function Home() {
       const endDate = new Date().toISOString().split('T')[0];
       const startDate = getDateDaysAgo(30);
       const res = await fetch(`/api/polygon?endpoint=/v2/aggs/ticker/${ticker}/range/1/day/${startDate}/${endDate}`);
+      
+      if (!res.ok) {
+        console.log(`Chart data temporarily unavailable for ${ticker}`);
+        return;
+      }
+      
       const data = await res.json();
       
       if (data.results) {
@@ -108,7 +121,7 @@ export default function Home() {
         setChartData(formattedData);
       }
     } catch (error) {
-      console.error('Error fetching chart data:', error);
+      console.log('Chart data network error, keeping existing data');
     }
   };
 
@@ -212,19 +225,24 @@ export default function Home() {
     for (const ticker of watchTickers) {
       try {
         const res = await fetch(`/api/polygon?endpoint=/v2/aggs/ticker/${ticker}/prev`);
-        const data = await res.json();
-        if (data.results?.[0]) {
-          const r = data.results[0];
-          const change = ((r.c - r.o) / r.o * 100);
-          movers.push({ 
-            ticker, 
-            change: change.toFixed(2), 
-            price: r.c,
-            volume: r.v
-          });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.results?.[0]) {
+            const r = data.results[0];
+            const change = ((r.c - r.o) / r.o * 100);
+            movers.push({ 
+              ticker, 
+              change: change.toFixed(2), 
+              price: r.c,
+              volume: r.v
+            });
+          }
+        } else {
+          // Silently skip failed API calls
+          console.log(`API temporarily unavailable for ${ticker}`);
         }
       } catch (error) {
-        console.error(`Error fetching ${ticker}:`, error);
+        console.log(`Network error for ${ticker}, skipping`);
       }
     }
     
