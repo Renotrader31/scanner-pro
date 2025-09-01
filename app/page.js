@@ -9,6 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import OptionsScanner from './components/OptionsScanner';
 import AlertsPanel from './components/AlertsPanel';
 import MarketHeatmap from './components/MarketHeatmap';
+import AIRecommendations from './components/AIRecommendations';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('squeeze');
@@ -814,40 +815,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* AI Picks Section */}
+        {/* AI Recommendations Section */}
         {activeTab === 'recs' && (
           <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
-            <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-500">
-              AI-Powered Daily Picks
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 p-4 rounded-lg border border-green-500/30 hover:scale-105 transition-transform">
-                <h3 className="font-bold text-green-400 mb-3">🟢 BULLISH PICKS</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between"><span>NVDA</span><span className="text-green-400">+15% target</span></div>
-                  <div className="flex justify-between"><span>TSLA</span><span className="text-green-400">+12% target</span></div>
-                  <div className="flex justify-between"><span>AMD</span><span className="text-green-400">+10% target</span></div>
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 p-4 rounded-lg border border-red-500/30 hover:scale-105 transition-transform">
-                <h3 className="font-bold text-red-400 mb-3">🔴 SHORT CANDIDATES</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between"><span>BBBY</span><span className="text-red-400">-20% target</span></div>
-                  <div className="flex justify-between"><span>CVNA</span><span className="text-red-400">-15% target</span></div>
-                  <div className="flex justify-between"><span>W</span><span className="text-red-400">-10% target</span></div>
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-br from-purple-500/20 to-indigo-600/20 p-4 rounded-lg border border-purple-500/30 hover:scale-105 transition-transform">
-                <h3 className="font-bold text-purple-400 mb-3">⚡ SQUEEZE ALERTS</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between"><span>GME</span><span className="text-purple-400">EXTREME</span></div>
-                  <div className="flex justify-between"><span>AMC</span><span className="text-purple-400">HIGH</span></div>
-                  <div className="flex justify-between"><span>MULN</span><span className="text-purple-400">BUILDING</span></div>
-                </div>
-              </div>
-            </div>
+            <AIRecommendations />
           </div>
         )}
 
