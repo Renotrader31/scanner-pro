@@ -12,6 +12,7 @@ import MarketHeatmap from './components/MarketHeatmap';
 import AIRecommendations from './components/AIRecommendations';
 import MassScanner from './components/MassScanner';
 import TradeFeedback from './components/TradeFeedback';
+import TradingManager from './components/TradingManager';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('mass');
@@ -553,6 +554,9 @@ export default function Home() {
           <button onClick={() => setActiveTab('feedback')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'feedback' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             🧠 ML Learning
           </button>
+          <button onClick={() => setActiveTab('trading')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'trading' ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            💰 Trade Manager
+          </button>
           <button onClick={() => setActiveTab('options')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'options' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             <Target size={16} className="inline mr-1" /> Options Flow
           </button>
@@ -592,6 +596,13 @@ export default function Home() {
             <TradeFeedback />
           </div>
         )}
+        {/* TRADING MANAGER - FOURTH PRIORITY */}
+        {activeTab === 'trading' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            <TradingManager />
+          </div>
+        )}
+
 
         {/* OPTIONS SCANNER - FOURTH PRIORITY */}
         {activeTab === 'options' && (
