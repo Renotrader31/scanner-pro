@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const POLYGON_API_KEY = '75rlu6cWGNnIqqR_x8M384YUjBgGk6kT';
-const BASE_URL = 'https://api.polygon.io';
-
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,6 +9,10 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Endpoint required' }, { status: 400 });
     }
 
+    // Build the API URL
+    const POLYGON_API_KEY = process.env.POLYGON_API_KEY || '75rlu6cWGNnIqqR_x8M384YUjBgGk6kT';
+    const BASE_URL = 'https://api.polygon.io';
+    
     const params = new URLSearchParams();
     searchParams.forEach((value, key) => {
       if (key !== 'endpoint') {
@@ -22,11 +23,21 @@ export async function GET(request) {
 
     const url = `${BASE_URL}${endpoint}?${params.toString()}`;
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      return NextResponse.json({ error: 'API request failed' }, { status: response.status });
+    }
+    
     const data = await response.json();
-
     return NextResponse.json(data);
+    
   } catch (error) {
     console.error('Polygon API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// Add POST method too
+export async function POST(request) {
+  return GET(request);
 }
