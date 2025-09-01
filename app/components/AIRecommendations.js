@@ -249,7 +249,6 @@ const AIRecommendations = () => {
               step="1000"
             />
           </div>
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">&nbsp;</label>
             <button
@@ -263,6 +262,7 @@ const AIRecommendations = () => {
             >
               {loading ? 'Analyzing...' : '🔍 Analyze'}
             </button>
+          </div>
         </div>
       </div>
 

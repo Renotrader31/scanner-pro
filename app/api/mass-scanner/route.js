@@ -99,6 +99,37 @@ const SCREENING_CRITERIA = {
     name: 'High Beta Momentum',
     description: 'High beta stocks with market momentum',
     criteria: (stock) => stock.beta > 1.5 && stock.change * stock.spyChange > 0 && Math.abs(stock.change) > 2
+  },
+
+  // More realistic scanners for regular use
+  ALL_STOCKS: {
+    name: 'All Stocks',
+    description: 'Show all stocks for testing - minimal filtering',
+    criteria: (stock) => true // No filtering
+  },
+
+  TOP_GAINERS: {
+    name: 'Top Gainers',
+    description: 'Stocks with any positive movement',
+    criteria: (stock) => stock.change > 0
+  },
+
+  TOP_LOSERS: {
+    name: 'Top Losers', 
+    description: 'Stocks with negative movement',
+    criteria: (stock) => stock.change < 0
+  },
+
+  HIGH_VOLUME: {
+    name: 'High Volume',
+    description: 'Stocks with above-average volume activity',
+    criteria: (stock) => stock.volumeScore > 1.2
+  },
+
+  MODERATE_MOVERS: {
+    name: 'Moderate Movers',
+    description: 'Stocks with moderate price movement (0.5%+)',
+    criteria: (stock) => Math.abs(stock.change) > 0.5
   }
 };
 

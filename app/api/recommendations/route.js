@@ -340,7 +340,7 @@ async function generateRecommendations(ticker, marketData, mlAnalysis, accountSi
       longCall: Math.round(stockPrice * 1.08)
     };
     const netCredit = stockPrice * 0.015 + Math.random() * stockPrice * 0.01;
-    const contracts = Math.max(1, Math.floor((accountSize * 0.04) / (400 * contracts || 1)));
+    const contracts = Math.max(1, Math.floor((accountSize * 0.04) / 400));
     
     recommendations.push({
       id: `${ticker}_iron_condor_${Date.now()}`,
