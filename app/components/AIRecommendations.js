@@ -211,18 +211,18 @@ const AIRecommendations = () => {
 
       {/* Controls */}
       <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-4 border border-gray-700/50">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Select Ticker</label>
-            <select
+            <label className="block text-sm font-medium text-gray-300 mb-2">Enter Any Ticker</label>
+            <input
+              type="text"
               value={selectedTicker}
-              onChange={(e) => setSelectedTicker(e.target.value)}
+              onChange={(e) => setSelectedTicker(e.target.value.toUpperCase())}
               className="w-full px-3 py-2 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white"
-            >
-              {watchedTickers.map(ticker => (
-                <option key={ticker} value={ticker}>{ticker}</option>
-              ))}
-            </select>
+              placeholder="Enter ticker (e.g., AAPL, TSLA, SPY...)"
+              maxLength={10}
+            />
+            <p className="text-xs text-gray-400 mt-1">Enter any stock ticker for AI analysis</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Risk Level</label>
@@ -249,6 +249,20 @@ const AIRecommendations = () => {
               step="1000"
             />
           </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">&nbsp;</label>
+            <button
+              onClick={fetchAIRecommendations}
+              disabled={loading || !selectedTicker.trim()}
+              className={`w-full px-4 py-2 rounded-lg font-bold transition-all ${
+                loading || !selectedTicker.trim()
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700'
+              }`}
+            >
+              {loading ? 'Analyzing...' : '🔍 Analyze'}
+            </button>
         </div>
       </div>
 
@@ -260,7 +274,7 @@ const AIRecommendations = () => {
             ML Market Analysis - {selectedTicker}
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* Price Prediction */}
             <div className="bg-gray-900/50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">

@@ -369,7 +369,7 @@ const TradingManager = () => {
 
       {/* Enhanced Trade Entry Modal */}
       {showTradeModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 rounded-2xl border border-gray-600 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-700">
               <div className="flex items-center justify-between">
@@ -706,7 +706,7 @@ const TradingManager = () => {
 
       {/* Trade Action Modal */}
       {showActionModal && selectedTrade && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 rounded-2xl border border-gray-600 w-full max-w-md">
             <div className="p-4 border-b border-gray-700">
               <div className="flex items-center justify-between">
