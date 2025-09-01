@@ -8,9 +8,10 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import OptionsScanner from './components/OptionsScanner';
 import AlertsPanel from './components/AlertsPanel';
+import MarketHeatmap from './components/MarketHeatmap';
 
 export default function Home() {
-  const [activeScanner, setActiveScanner] = useState(null);
+  const [activeTab, setActiveTab] = useState('squeeze');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [tickers, setTickers] = useState('SPY,QQQ,AAPL,TSLA,NVDA');
@@ -26,101 +27,7 @@ export default function Home() {
   const [filters, setFilters] = useState({ minPrice: 0, maxPrice: 1000, minVolume: 0 });
   const [showFilters, setShowFilters] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [scannerStats, setScannerStats] = useState({
-    squeeze: { count: 0, active: false },
-    shorts: { count: 0, active: false },
-    momentum: { count: 0, active: false },
-    volume: { count: 0, active: false },
-    options: { count: 0, active: false },
-    unusualActivity: { count: 0, active: false },
-    darkPool: { count: 0, active: false },
-    gammaFlow: { count: 0, active: false }
-  });
   const audioRef = useRef(null);
-
-  // Professional scanner configurations
-  const scannerConfigs = [
-    {
-      id: 'squeeze',
-      name: 'Short Squeeze',
-      description: 'High SI with positive flow',
-      icon: '🎯',
-      color: 'from-red-500 to-orange-500',
-      borderColor: 'border-red-500/30',
-      textColor: 'text-red-400',
-      bgColor: 'bg-red-500/10'
-    },
-    {
-      id: 'momentum', 
-      name: 'Momentum Play',
-      description: 'Strong directional movement',
-      icon: '🚀',
-      color: 'from-green-500 to-emerald-500',
-      borderColor: 'border-green-500/30',
-      textColor: 'text-green-400',
-      bgColor: 'bg-green-500/10'
-    },
-    {
-      id: 'volume',
-      name: 'Volume Surge',
-      description: 'Unusual trading volume',
-      icon: '📊',
-      color: 'from-blue-500 to-cyan-500', 
-      borderColor: 'border-blue-500/30',
-      textColor: 'text-blue-400',
-      bgColor: 'bg-blue-500/10'
-    },
-    {
-      id: 'options',
-      name: 'Options Flow',
-      description: 'Unusual options activity',
-      icon: '⚡',
-      color: 'from-purple-500 to-indigo-500',
-      borderColor: 'border-purple-500/30', 
-      textColor: 'text-purple-400',
-      bgColor: 'bg-purple-500/10'
-    },
-    {
-      id: 'unusualActivity',
-      name: 'Unusual Activity',
-      description: 'Abnormal price & volume',
-      icon: '🔥',
-      color: 'from-yellow-500 to-orange-500',
-      borderColor: 'border-yellow-500/30',
-      textColor: 'text-yellow-400',
-      bgColor: 'bg-yellow-500/10'
-    },
-    {
-      id: 'darkPool',
-      name: 'Dark Pool',
-      description: 'Hidden institutional flow',
-      icon: '🌊',
-      color: 'from-indigo-500 to-purple-500',
-      borderColor: 'border-indigo-500/30',
-      textColor: 'text-indigo-400',
-      bgColor: 'bg-indigo-500/10'
-    },
-    {
-      id: 'gammaFlow',
-      name: 'Gamma Flow',
-      description: 'High gamma exposure',
-      icon: '⭐',
-      color: 'from-pink-500 to-rose-500',
-      borderColor: 'border-pink-500/30',
-      textColor: 'text-pink-400',
-      bgColor: 'bg-pink-500/10'
-    },
-    {
-      id: 'recs',
-      name: 'AI Picks',
-      description: 'AI-powered recommendations', 
-      icon: '🤖',
-      color: 'from-emerald-500 to-teal-500',
-      borderColor: 'border-emerald-500/30',
-      textColor: 'text-emerald-400',
-      bgColor: 'bg-emerald-500/10'
-    }
-  ];
 
   useEffect(() => {
     fetchTopMovers();
@@ -332,43 +239,22 @@ export default function Home() {
     return date.toISOString().split('T')[0];
   };
 
-  const handleScannerSelect = async (scannerId) => {
-    if (scannerId === 'options' || scannerId === 'recs') {
-      return; // These are handled in their respective components
-    }
-    
-    await scanStocks(scannerId);
-  };
-
-  const handleScanAll = async () => {
-    const scanners = ['squeeze', 'momentum', 'volume', 'unusualActivity'];
-    for (const scanner of scanners) {
-      await scanStocks(scanner);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay between scans
-    }
-  };
-
-  const scanStocks = async (scannerType) => {
+  const scanStocks = async () => {
     setLoading(true);
     setResults([]);
     
-    // Update scanner stats
-    setScannerStats(prev => ({
-      ...prev,
-      [scannerType]: { ...prev[scannerType], active: true }
-    }));
-    
-    if (scannerType === 'volume') {
+    if (activeTab === 'volume') {
       await scanVolumeSurge();
       return;
     }
     
-    if (scannerType === 'momentum') {
+    if (activeTab === 'momentum') {
       await scanMomentum();
       return;
     }
     
-    const tickerList = tickers.split(',').map(t => t.trim());
+    const tickerList = (activeTab === 'shorts' ? shortTickers : tickers)
+      .split(',').map(t => t.trim());
     const scanResults = [];
     
     for (const ticker of tickerList) {
@@ -387,7 +273,7 @@ export default function Home() {
             low: r.l
           };
           
-          if (scannerType === 'squeeze' || scannerType === 'unusualActivity') {
+          if (activeTab === 'shorts') {
             const ortexRes = await fetch(`/api/ortex?ticker=${ticker}`);
             const ortexData = await ortexRes.json();
             if (ortexData.data) {
@@ -416,12 +302,6 @@ export default function Home() {
     });
     
     setResults(filteredResults);
-    
-    // Update scanner stats with results count
-    setScannerStats(prev => ({
-      ...prev,
-      [scannerType]: { count: filteredResults.length, active: false }
-    }));
     
     // Check alerts for each result
     filteredResults.forEach(result => {
@@ -466,15 +346,7 @@ export default function Home() {
       }
     }
     
-    const sortedResults = scanResults.sort((a, b) => parseInt(b.volRatio) - parseInt(a.volRatio));
-    setResults(sortedResults);
-    
-    // Update scanner stats
-    setScannerStats(prev => ({
-      ...prev,
-      volume: { count: sortedResults.length, active: false }
-    }));
-    
+    setResults(scanResults.sort((a, b) => parseInt(b.volRatio) - parseInt(a.volRatio)));
     setLoading(false);
   };
 
@@ -509,15 +381,7 @@ export default function Home() {
       }
     }
     
-    const sortedResults = scanResults.sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change)));
-    setResults(sortedResults);
-    
-    // Update scanner stats
-    setScannerStats(prev => ({
-      ...prev,
-      momentum: { count: sortedResults.length, active: false }
-    }));
-    
+    setResults(scanResults.sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change))));
     setLoading(false);
   };
 
@@ -583,128 +447,96 @@ export default function Home() {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto p-8">
-        {/* Professional Header */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-6">
+        {/* Enhanced Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold">
+              <h1 className="text-4xl font-bold">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
                   Ultimate Scanner Pro
                 </span>
-                <span className="ml-2 text-sm bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent font-medium">
-                  LEGENDARY EDITION
-                </span>
+                <span className="ml-3">🚀</span>
               </h1>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-gray-800/50 backdrop-blur px-4 py-2 rounded-lg">
-                <div className={`w-2 h-2 rounded-full ${marketStatus.includes('Open') ? 'bg-green-500' : marketStatus.includes('Pre') || marketStatus.includes('After') ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                <span className="text-sm text-gray-300">{marketStatus}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-gray-800/50 backdrop-blur px-4 py-2 rounded-lg">
-                <Bell size={16} className="text-yellow-400" />
-                <span className="text-sm text-gray-300">{alerts.filter(a => a.active).length} Alerts</span>
-              </div>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setShowWatchlist(!showWatchlist)}
                   className={`p-2 rounded-lg transition-all ${showWatchlist ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
                   title="Toggle Watchlist"
                 >
-                  <Eye size={18} />
+                  <Eye size={20} />
                 </button>
                 <button 
                   onClick={() => setShowCharts(!showCharts)}
                   className={`p-2 rounded-lg transition-all ${showCharts ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300'}`}
                   title="Toggle Charts"
                 >
-                  <BarChart3 size={18} />
+                  <BarChart3 size={20} />
                 </button>
                 <button 
                   onClick={() => setSoundEnabled(!soundEnabled)}
                   className={`p-2 rounded-lg transition-all ${soundEnabled ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300'}`}
                   title="Toggle Sound Alerts"
                 >
-                  {soundEnabled ? <Bell size={18} /> : <X size={18} />}
+                  <Bell size={20} />
                 </button>
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`p-2 rounded-lg transition-all ${showFilters ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+                  title="Toggle Filters"
+                >
+                  <Filter size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-400 bg-gray-800/50 backdrop-blur px-4 py-2 rounded-full">
+                {marketStatus}
+              </div>
+              <div className="text-sm text-gray-400 bg-gray-800/50 backdrop-blur px-4 py-2 rounded-full flex items-center gap-2">
+                <Activity size={16} />
+                {alerts.filter(a => a.active).length} Active Alerts
               </div>
             </div>
           </div>
 
-          {/* Professional Scanner Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-6">
-            {scannerConfigs.map((scanner) => {
-              const stats = scannerStats[scanner.id] || { count: 0, active: false };
-              const isActive = activeScanner === scanner.id;
-              return (
-                <button
-                  key={scanner.id}
-                  onClick={() => {
-                    setActiveScanner(activeScanner === scanner.id ? null : scanner.id);
-                    if (activeScanner !== scanner.id) {
-                      // Trigger scan for this scanner
-                      handleScannerSelect(scanner.id);
-                    }
-                  }}
-                  className={`relative p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] group ${
-                    isActive 
-                      ? `bg-gradient-to-br ${scanner.color} text-white border-white/20 shadow-2xl` 
-                      : `${scanner.bgColor} ${scanner.borderColor} border hover:border-opacity-60`
-                  }`}
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className={`text-2xl mb-2 ${isActive ? 'animate-pulse' : ''}`}>{scanner.icon}</div>
-                    <div className={`text-sm font-bold mb-1 ${isActive ? 'text-white' : scanner.textColor}`}>
-                      {scanner.name}
-                    </div>
-                    <div className={`text-xs opacity-80 mb-2 ${isActive ? 'text-white/80' : 'text-gray-400'}`}>
-                      {scanner.description}
-                    </div>
-                    <div className={`text-2xl font-bold ${isActive ? 'text-white' : scanner.textColor}`}>
-                      {stats.count}
-                    </div>
-                    <div className={`text-xs ${isActive ? 'text-white/60' : 'text-gray-500'}`}>
-                      {stats.count === 1 ? 'stock found' : 'stocks found'}
-                    </div>
-                    {stats.active && (
-                      <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    )}
-                    {loading && activeScanner === scanner.id && (
-                      <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Quick Controls Bar */}
-          <div className="flex justify-between items-center bg-gray-800/30 backdrop-blur rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-4">
-              <button 
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-white font-medium"
-                onClick={() => handleScanAll()}
-              >
-                <Activity size={16} />
-                Scan All Strategies
-              </button>
-              <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
-                  showFilters ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                <Filter size={16} />
-                Quality Filter: Min $5 price, 1M+ volume
-              </button>
+          {/* Advanced Filters Panel */}
+          {showFilters && (
+            <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-4 mb-6 border border-gray-700/50">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Filter size={20} className="text-purple-400" />
+                Advanced Filters
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Min Price ($)</label>
+                  <input
+                    type="number"
+                    value={filters.minPrice}
+                    onChange={(e) => setFilters({...filters, minPrice: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Max Price ($)</label>
+                  <input
+                    type="number"
+                    value={filters.maxPrice}
+                    onChange={(e) => setFilters({...filters, maxPrice: parseFloat(e.target.value) || 1000})}
+                    className="w-full px-3 py-2 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Min Volume (M)</label>
+                  <input
+                    type="number"
+                    value={filters.minVolume}
+                    onChange={(e) => setFilters({...filters, minVolume: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              Live: 11351 stocks scanning • 10:42:48 AM
-            </div>
-          </div>
+          )}
 
           {/* Dashboard Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
@@ -909,154 +741,158 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          {/* Market Heatmap Section */}
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-cyan-500/20">
+            <MarketHeatmap />
+          </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-2 mb-6 flex gap-2 flex-wrap">
+          <button onClick={() => setActiveTab('squeeze')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'squeeze' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            🎯 Squeeze Scanner
+          </button>
+          <button onClick={() => setActiveTab('shorts')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'shorts' ? 'bg-gradient-to-r from-red-500 to-orange-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            🔥 Short Squeeze
+          </button>
+          <button onClick={() => setActiveTab('momentum')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'momentum' ? 'bg-gradient-to-r from-green-500 to-teal-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            🚀 Momentum
+          </button>
+          <button onClick={() => setActiveTab('volume')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'volume' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            📊 Volume Surge
+          </button>
+          <button onClick={() => setActiveTab('options')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'options' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            <Target size={16} className="inline mr-1" /> Options Flow
+          </button>
+          <button onClick={() => setActiveTab('recs')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'recs' ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            ⭐ AI Picks
+          </button>
+        </div>
 
-
-        {/* Active Scanner Content */}
-        {activeScanner && (
-          <div className="mb-6">
-            {activeScanner === 'options' && (
-              <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
-                <OptionsScanner />
-              </div>
-            )}
-            
-            {activeScanner === 'recs' && (
-              <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
-                <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-500">
-                  AI-Powered Daily Picks
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 p-4 rounded-lg border border-green-500/30 hover:scale-105 transition-transform">
-                    <h3 className="font-bold text-green-400 mb-3">🟢 BULLISH PICKS</h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between"><span>NVDA</span><span className="text-green-400">+15% target</span></div>
-                      <div className="flex justify-between"><span>TSLA</span><span className="text-green-400">+12% target</span></div>
-                      <div className="flex justify-between"><span>AMD</span><span className="text-green-400">+10% target</span></div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 p-4 rounded-lg border border-red-500/30 hover:scale-105 transition-transform">
-                    <h3 className="font-bold text-red-400 mb-3">🔴 SHORT CANDIDATES</h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between"><span>BBBY</span><span className="text-red-400">-20% target</span></div>
-                      <div className="flex justify-between"><span>CVNA</span><span className="text-red-400">-15% target</span></div>
-                      <div className="flex justify-between"><span>W</span><span className="text-red-400">-10% target</span></div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-purple-500/20 to-indigo-600/20 p-4 rounded-lg border border-purple-500/30 hover:scale-105 transition-transform">
-                    <h3 className="font-bold text-purple-400 mb-3">⚡ SQUEEZE ALERTS</h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between"><span>GME</span><span className="text-purple-400">EXTREME</span></div>
-                      <div className="flex justify-between"><span>AMC</span><span className="text-purple-400">HIGH</span></div>
-                      <div className="flex justify-between"><span>MULN</span><span className="text-purple-400">BUILDING</span></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {(activeScanner === 'squeeze' || activeScanner === 'momentum' || activeScanner === 'volume' || activeScanner === 'unusualActivity' || activeScanner === 'darkPool' || activeScanner === 'gammaFlow') && (
-              <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    value={tickers}
-                    onChange={(e) => setTickers(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-white placeholder-gray-500"
-                    placeholder="Enter tickers separated by commas (e.g., SPY,QQQ,AAPL,TSLA,NVDA)..."
-                  />
-                </div>
-                
-                <button
-                  onClick={() => scanStocks(activeScanner)}
-                  disabled={loading}
-                  className={`w-full py-4 rounded-lg font-bold text-lg transition-all transform ${
-                    loading 
-                      ? 'bg-gray-600 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 hover:scale-[1.02] shadow-lg'
-                  }`}
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Scanning {scannerConfigs.find(s => s.id === activeScanner)?.name}...
-                    </span>
-                  ) : (
-                    `SCAN ${scannerConfigs.find(s => s.id === activeScanner)?.name.toUpperCase()} 🎯`
-                  )}
-                </button>
-              </div>
-            )}
+        {/* Options Scanner */}
+        {activeTab === 'options' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            <OptionsScanner />
           </div>
         )}
 
+        {/* Scanner Controls */}
+        {activeTab !== 'recs' && activeTab !== 'options' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            {(activeTab === 'squeeze' || activeTab === 'shorts') && (
+              <input
+                type="text"
+                value={activeTab === 'shorts' ? shortTickers : tickers}
+                onChange={(e) => activeTab === 'shorts' ? setShortTickers(e.target.value) : setTickers(e.target.value)}
+                className="w-full px-4 py-3 mb-4 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-white placeholder-gray-500"
+                placeholder="Enter tickers separated by commas..."
+              />
+            )}
+            
+            <button
+              onClick={scanStocks}
+              disabled={loading}
+              className={`w-full py-4 rounded-lg font-bold text-lg transition-all transform ${
+                loading 
+                  ? 'bg-gray-600 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 hover:scale-[1.02] shadow-lg'
+              }`}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Scanning Markets...
+                </span>
+              ) : (
+                `SCAN NOW ${activeTab === 'shorts' ? '🔥' : '🎯'}`
+              )}
+            </button>
+          </div>
+        )}
 
+        {/* AI Picks Section */}
+        {activeTab === 'recs' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
+            <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-500">
+              AI-Powered Daily Picks
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 p-4 rounded-lg border border-green-500/30 hover:scale-105 transition-transform">
+                <h3 className="font-bold text-green-400 mb-3">🟢 BULLISH PICKS</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between"><span>NVDA</span><span className="text-green-400">+15% target</span></div>
+                  <div className="flex justify-between"><span>TSLA</span><span className="text-green-400">+12% target</span></div>
+                  <div className="flex justify-between"><span>AMD</span><span className="text-green-400">+10% target</span></div>
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 p-4 rounded-lg border border-red-500/30 hover:scale-105 transition-transform">
+                <h3 className="font-bold text-red-400 mb-3">🔴 SHORT CANDIDATES</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between"><span>BBBY</span><span className="text-red-400">-20% target</span></div>
+                  <div className="flex justify-between"><span>CVNA</span><span className="text-red-400">-15% target</span></div>
+                  <div className="flex justify-between"><span>W</span><span className="text-red-400">-10% target</span></div>
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-purple-500/20 to-indigo-600/20 p-4 rounded-lg border border-purple-500/30 hover:scale-105 transition-transform">
+                <h3 className="font-bold text-purple-400 mb-3">⚡ SQUEEZE ALERTS</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between"><span>GME</span><span className="text-purple-400">EXTREME</span></div>
+                  <div className="flex justify-between"><span>AMC</span><span className="text-purple-400">HIGH</span></div>
+                  <div className="flex justify-between"><span>MULN</span><span className="text-purple-400">BUILDING</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Results Section */}
-        {results.length > 0 && activeScanner && activeScanner !== 'options' && activeScanner !== 'recs' && (
+        {results.length > 0 && activeTab !== 'options' && (
           <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">
-                {scannerConfigs.find(s => s.id === activeScanner)?.name} Results
-                <span className="ml-2 text-sm font-normal text-gray-400">({results.length} stocks found)</span>
-              </h2>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => scanStocks(activeScanner)}
-                  className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 text-sm font-medium"
-                >
-                  <Activity size={16} /> Refresh
-                </button>
-                <button onClick={exportToCSV} className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all flex items-center gap-2 text-sm font-medium">
-                  <span>📥</span> Export CSV
-                </button>
-              </div>
+              <h2 className="text-2xl font-bold">Results</h2>
+              <button onClick={exportToCSV} className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all flex items-center gap-2">
+                <span>📥</span> Export CSV
+              </button>
             </div>
             
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-left pb-3 text-gray-400 font-bold">SYMBOL</th>
-                    <th className="text-left pb-3 text-gray-400 font-bold">PRICE</th>
-                    <th className="text-left pb-3 text-gray-400 font-bold">CHANGE</th>
-                    <th className="text-left pb-3 text-gray-400 font-bold">VOLUME</th>
-                    {(activeScanner === 'squeeze' || activeScanner === 'unusualActivity') && (
+                    <th className="text-left pb-3 text-gray-400">Ticker</th>
+                    <th className="text-left pb-3 text-gray-400">Price</th>
+                    <th className="text-left pb-3 text-gray-400">Change</th>
+                    <th className="text-left pb-3 text-gray-400">Volume</th>
+                    {activeTab === 'shorts' && (
                       <>
-                        <th className="text-left pb-3 text-gray-400 font-bold">SQUEEZE</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">SI %</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">CTB %</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">UTIL %</th>
+                        <th className="text-left pb-3 text-gray-400">SI %</th>
+                        <th className="text-left pb-3 text-gray-400">CTB %</th>
+                        <th className="text-left pb-3 text-gray-400">Util %</th>
+                        <th className="text-left pb-3 text-gray-400">Score</th>
                       </>
                     )}
-                    {activeScanner === 'volume' && (
+                    {activeTab === 'volume' && (
                       <>
-                        <th className="text-left pb-3 text-gray-400 font-bold">AVG VOL</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">RATIO</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">SIGNAL</th>
+                        <th className="text-left pb-3 text-gray-400">Avg Volume</th>
+                        <th className="text-left pb-3 text-gray-400">Vol Ratio</th>
+                        <th className="text-left pb-3 text-gray-400">Signal</th>
                       </>
                     )}
-                    {activeScanner === 'momentum' && (
+                    {activeTab === 'momentum' && (
+                      <th className="text-left pb-3 text-gray-400">Trend</th>
+                    )}
+                    {activeTab === 'squeeze' && (
                       <>
-                        <th className="text-left pb-3 text-gray-400 font-bold">TREND</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">HIGH</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">LOW</th>
+                        <th className="text-left pb-3 text-gray-400">High</th>
+                        <th className="text-left pb-3 text-gray-400">Low</th>
                       </>
                     )}
-                    {(activeScanner === 'darkPool' || activeScanner === 'gammaFlow') && (
-                      <>
-                        <th className="text-left pb-3 text-gray-400 font-bold">FLOW</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">SENTIMENT</th>
-                        <th className="text-left pb-3 text-gray-400 font-bold">RISK</th>
-                      </>
-                    )}
-                    <th className="text-left pb-3 text-gray-400 font-bold">ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1081,27 +917,27 @@ export default function Home() {
                           </button>
                         </div>
                       </td>
-                      <td className="py-3 font-bold">${r.price?.toFixed(2)}</td>
-                      <td className={`py-3 font-bold ${parseFloat(r.change) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <td className="py-3">${r.price?.toFixed(2)}</td>
+                      <td className={`py-3 font-medium ${parseFloat(r.change) > 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {parseFloat(r.change) > 0 ? '+' : ''}{r.change}%
                       </td>
-                      <td className="py-3 font-medium">{(r.volume / 1000000).toFixed(1)}M</td>
-                      {(activeScanner === 'squeeze' || activeScanner === 'unusualActivity') && (
+                      <td className="py-3">{(r.volume / 1000000).toFixed(1)}M</td>
+                      {activeTab === 'shorts' && (
                         <>
+                          <td className="py-3">{r.shortInterest?.toFixed(1)}%</td>
+                          <td className="py-3">{r.costToBorrow?.toFixed(1)}%</td>
+                          <td className="py-3">{r.utilization?.toFixed(1)}%</td>
                           <td className="py-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${getSqueezeRating(r.squeezeScore || 0).color}`}>
                               {getSqueezeRating(r.squeezeScore || 0).text}
                             </span>
                           </td>
-                          <td className="py-3 font-medium text-red-400">{r.shortInterest?.toFixed(1)}%</td>
-                          <td className="py-3 font-medium text-orange-400">{r.costToBorrow?.toFixed(1)}%</td>
-                          <td className="py-3 font-medium text-yellow-400">{r.utilization?.toFixed(1)}%</td>
                         </>
                       )}
-                      {activeScanner === 'volume' && (
+                      {activeTab === 'volume' && (
                         <>
-                          <td className="py-3 text-gray-400">{(r.avgVolume / 1000000).toFixed(1)}M</td>
-                          <td className="py-3 font-bold text-blue-400">{r.volRatio}%</td>
+                          <td className="py-3">{(r.avgVolume / 1000000).toFixed(1)}M</td>
+                          <td className="py-3">{r.volRatio}%</td>
                           <td className="py-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                               r.signal === 'EXTREME' ? 'bg-red-500' : 
@@ -1112,44 +948,21 @@ export default function Home() {
                           </td>
                         </>
                       )}
-                      {activeScanner === 'momentum' && (
+                      {activeTab === 'momentum' && (
+                        <td className="py-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            r.trend === 'BULLISH' ? 'bg-green-500' : 'bg-red-500'
+                          } text-white`}>
+                            {r.trend}
+                          </span>
+                        </td>
+                      )}
+                      {activeTab === 'squeeze' && (
                         <>
-                          <td className="py-3">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                              r.trend === 'BULLISH' ? 'bg-green-500' : 'bg-red-500'
-                            } text-white`}>
-                              {r.trend}
-                            </span>
-                          </td>
-                          <td className="py-3 text-green-400">${r.high?.toFixed(2)}</td>
-                          <td className="py-3 text-red-400">${r.low?.toFixed(2)}</td>
+                          <td className="py-3">${r.high?.toFixed(2)}</td>
+                          <td className="py-3">${r.low?.toFixed(2)}</td>
                         </>
                       )}
-                      {(activeScanner === 'darkPool' || activeScanner === 'gammaFlow') && (
-                        <>
-                          <td className="py-3 font-bold text-purple-400">$2.1M</td>
-                          <td className="py-3">
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-500 text-white">
-                              BULLISH
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500 text-black">
-                              MODERATE
-                            </span>
-                          </td>
-                        </>
-                      )}
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs font-bold transition-colors">
-                            WATCH
-                          </button>
-                          <button className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs font-bold transition-colors">
-                            ALERT
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
