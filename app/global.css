@@ -1,19 +1,1 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-body {
-  background: #0a0e27 !important;
-  color: white !important;
-  min-height: 100vh;
-}
-
-main {
-  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%) !important;
-}
-
-/* Test with a visible change */
-h1 {
-  color: #3b82f6 !important;
-  text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-}
