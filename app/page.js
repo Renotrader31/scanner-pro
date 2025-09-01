@@ -13,6 +13,7 @@ import AIRecommendations from './components/AIRecommendations';
 import MassScanner from './components/MassScanner';
 import TradeFeedback from './components/TradeFeedback';
 import TradingManager from './components/TradingManager';
+import TechnicalDashboard from './components/TechnicalDashboard';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('mass');
@@ -578,6 +579,9 @@ export default function Home() {
           <button onClick={() => setActiveTab('options')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'options' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             <Target size={16} className="inline mr-1" /> Options Flow
           </button>
+          <button onClick={() => setActiveTab('technicals')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'technicals' ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            <BarChart3 size={16} className="inline mr-1" /> Real Technicals
+          </button>
           <button onClick={() => setActiveTab('squeeze')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'squeeze' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             🎯 Squeeze Scanner
           </button>
@@ -629,8 +633,15 @@ export default function Home() {
           </div>
         )}
 
+        {/* TECHNICAL DASHBOARD - FIFTH PRIORITY */}
+        {activeTab === 'technicals' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            <TechnicalDashboard />
+          </div>
+        )}
+
         {/* TRADITIONAL SCANNER CONTROLS - LOWER PRIORITY */}
-        {activeTab !== 'recs' && activeTab !== 'options' && activeTab !== 'mass' && activeTab !== 'feedback' && (
+        {activeTab !== 'recs' && activeTab !== 'options' && activeTab !== 'mass' && activeTab !== 'feedback' && activeTab !== 'trading' && activeTab !== 'technicals' && (
           <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
             {(activeTab === 'squeeze' || activeTab === 'shorts') && (
               <input
