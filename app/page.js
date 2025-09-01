@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('squeeze');
@@ -9,6 +9,64 @@ export default function Home() {
   const [results, setResults] = useState([]);
   const [tickers, setTickers] = useState('SPY,QQQ,AAPL,TSLA,NVDA');
   const [shortTickers, setShortTickers] = useState('AMC,GME,BBBY,ATER,MULN');
+  const [topMovers, setTopMovers] = useState({ gainers: [], losers: [] });
+  const [marketStatus, setMarketStatus] = useState('');
+
+  useEffect(() => {
+    fetchTopMovers();
+    updateMarketStatus();
+    const interval = setInterval(updateMarketStatus, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const updateMarketStatus = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const day = now.getDay();
+    
+    if (day === 0 || day === 6) {
+      setMarketStatus('🔴 Weekend - Market Closed');
+    } else if ((hour === 9 && minute >= 30) || (hour > 9 && hour < 16)) {
+      setMarketStatus('🟢 Market Open');
+    } else if ((hour === 4 && minute < 30) || (hour > 4 && hour < 9) || (hour === 9 && minute < 30)) {
+      setMarketStatus('🟡 Pre-Market');
+    } else if (hour >= 16 && hour < 20) {
+      setMarketStatus('🟡 After-Hours');
+    } else {
+      setMarketStatus('🔴 Market Closed');
+    }
+  };
+
+  const fetchTopMovers = async () => {
+    const watchTickers = ['AAPL','MSFT','GOOGL','AMZN','NVDA','TSLA','META','AMD','NFLX','SPY'];
+    const movers = [];
+    
+    for (const ticker of watchTickers) {
+      try {
+        const res = await fetch(`/api/polygon?endpoint=/v2/aggs/ticker/${ticker}/prev`);
+        const data = await res.json();
+        if (data.results?.[0]) {
+          const r = data.results[0];
+          const change = ((r.c - r.o) / r.o * 100);
+          movers.push({ 
+            ticker, 
+            change: change.toFixed(2), 
+            price: r.c,
+            volume: r.v
+          });
+        }
+      } catch (error) {
+        console.error(`Error fetching ${ticker}:`, error);
+      }
+    }
+    
+    const sorted = movers.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+    setTopMovers({
+      gainers: movers.filter(m => m.change > 0).slice(0, 3),
+      losers: movers.filter(m => m.change < 0).slice(0, 3)
+    });
+  };
 
   // Helper functions
   const getTodayDate = () => new Date().toISOString().split('T')[0];
@@ -187,47 +245,100 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 p-8">
+    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
+      {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" style={{animationDelay: '2s'}}></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{animationDelay: '2s'}}></div>
+        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{animationDelay: '4s'}}></div>
       </div>
 
-      <div className="relative z-10">
-        <h1 className="text-5xl font-bold mb-8">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
-            Ultimate Scanner Pro
-          </span>
-          <span className="ml-3">🚀</span>
-        </h1>
+      <div className="relative z-10 max-w-7xl mx-auto p-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-5xl font-bold">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
+                Ultimate Scanner Pro
+              </span>
+              <span className="ml-3">🚀</span>
+            </h1>
+            <div className="text-sm text-gray-400 bg-gray-800/50 backdrop-blur px-4 py-2 rounded-full">
+              {marketStatus}
+            </div>
+          </div>
 
+          {/* Top Movers Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-4 border border-green-500/20">
+              <h3 className="text-green-400 font-bold mb-3 flex items-center">
+                <span className="text-2xl mr-2">📈</span> Top Gainers
+              </h3>
+              <div className="space-y-2">
+                {topMovers.gainers.map((mover, i) => (
+                  <div key={i} className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg hover:bg-gray-700/50 transition-all">
+                    <span className="font-bold text-white">{mover.ticker}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-400">${mover.price.toFixed(2)}</span>
+                      <span className="text-green-400 font-bold bg-green-500/20 px-2 py-1 rounded">
+                        +{mover.change}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-4 border border-red-500/20">
+              <h3 className="text-red-400 font-bold mb-3 flex items-center">
+                <span className="text-2xl mr-2">📉</span> Top Losers
+              </h3>
+              <div className="space-y-2">
+                {topMovers.losers.map((mover, i) => (
+                  <div key={i} className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg hover:bg-gray-700/50 transition-all">
+                    <span className="font-bold text-white">{mover.ticker}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-400">${mover.price.toFixed(2)}</span>
+                      <span className="text-red-400 font-bold bg-red-500/20 px-2 py-1 rounded">
+                        {mover.change}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
         <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-2 mb-6 flex gap-2 flex-wrap">
-          <button onClick={() => setActiveTab('squeeze')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'squeeze' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+          <button onClick={() => setActiveTab('squeeze')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'squeeze' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             🎯 Squeeze Scanner
           </button>
-          <button onClick={() => setActiveTab('shorts')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'shorts' ? 'bg-gradient-to-r from-red-500 to-orange-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+          <button onClick={() => setActiveTab('shorts')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'shorts' ? 'bg-gradient-to-r from-red-500 to-orange-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             🔥 Short Squeeze
           </button>
-          <button onClick={() => setActiveTab('momentum')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'momentum' ? 'bg-gradient-to-r from-green-500 to-teal-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+          <button onClick={() => setActiveTab('momentum')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'momentum' ? 'bg-gradient-to-r from-green-500 to-teal-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             🚀 Momentum
           </button>
-          <button onClick={() => setActiveTab('volume')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'volume' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+          <button onClick={() => setActiveTab('volume')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'volume' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             📊 Volume Surge
           </button>
-          <button onClick={() => setActiveTab('recs')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'recs' ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+          <button onClick={() => setActiveTab('recs')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'recs' ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
             ⭐ AI Picks
           </button>
         </div>
 
+        {/* Scanner Controls */}
         {activeTab !== 'recs' && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6">
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
             {(activeTab === 'squeeze' || activeTab === 'shorts') && (
               <input
                 type="text"
                 value={activeTab === 'shorts' ? shortTickers : tickers}
                 onChange={(e) => activeTab === 'shorts' ? setShortTickers(e.target.value) : setTickers(e.target.value)}
-                className="w-full px-4 py-3 mb-4 bg-gray-700/50 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-white"
-                placeholder="Enter tickers..."
+                className="w-full px-4 py-3 mb-4 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-white placeholder-gray-500"
+                placeholder="Enter tickers separated by commas..."
               />
             )}
             
@@ -237,22 +348,33 @@ export default function Home() {
               className={`w-full py-4 rounded-lg font-bold text-lg transition-all transform ${
                 loading 
                   ? 'bg-gray-600 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 hover:scale-105'
+                  : 'bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 hover:scale-[1.02] shadow-lg'
               }`}
             >
-              {loading ? 'Scanning...' : `SCAN NOW ${activeTab === 'shorts' ? '🔥' : '🎯'}`}
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Scanning Markets...
+                </span>
+              ) : (
+                `SCAN NOW ${activeTab === 'shorts' ? '🔥' : '🎯'}`
+              )}
             </button>
           </div>
         )}
 
+        {/* AI Picks Section */}
         {activeTab === 'recs' && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6">
-            <h2 className="text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-500">
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
+            <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-500">
               AI-Powered Daily Picks
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 p-4 rounded-lg border border-green-500/30">
-                <h3 className="font-bold text-green-400 mb-2">🟢 BULLISH PICKS</h3>
+              <div className="bg-gradient-to-br from-green-500/20 to-emerald-600/20 p-4 rounded-lg border border-green-500/30 hover:scale-105 transition-transform">
+                <h3 className="font-bold text-green-400 mb-3">🟢 BULLISH PICKS</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between"><span>NVDA</span><span className="text-green-400">+15% target</span></div>
                   <div className="flex justify-between"><span>TSLA</span><span className="text-green-400">+12% target</span></div>
@@ -260,8 +382,8 @@ export default function Home() {
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 p-4 rounded-lg border border-red-500/30">
-                <h3 className="font-bold text-red-400 mb-2">🔴 SHORT CANDIDATES</h3>
+              <div className="bg-gradient-to-br from-red-500/20 to-orange-600/20 p-4 rounded-lg border border-red-500/30 hover:scale-105 transition-transform">
+                <h3 className="font-bold text-red-400 mb-3">🔴 SHORT CANDIDATES</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between"><span>BBBY</span><span className="text-red-400">-20% target</span></div>
                   <div className="flex justify-between"><span>CVNA</span><span className="text-red-400">-15% target</span></div>
@@ -269,8 +391,8 @@ export default function Home() {
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-purple-500/20 to-indigo-600/20 p-4 rounded-lg border border-purple-500/30">
-                <h3 className="font-bold text-purple-400 mb-2">⚡ SQUEEZE ALERTS</h3>
+              <div className="bg-gradient-to-br from-purple-500/20 to-indigo-600/20 p-4 rounded-lg border border-purple-500/30 hover:scale-105 transition-transform">
+                <h3 className="font-bold text-purple-400 mb-3">⚡ SQUEEZE ALERTS</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between"><span>GME</span><span className="text-purple-400">EXTREME</span></div>
                   <div className="flex justify-between"><span>AMC</span><span className="text-purple-400">HIGH</span></div>
@@ -281,12 +403,13 @@ export default function Home() {
           </div>
         )}
 
+        {/* Results Section */}
         {results.length > 0 && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6">
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Results</h2>
-              <button onClick={exportToCSV} className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all">
-                📥 Export CSV
+              <button onClick={exportToCSV} className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all flex items-center gap-2">
+                <span>📥</span> Export CSV
               </button>
             </div>
             
@@ -294,32 +417,32 @@ export default function Home() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-left pb-3">Ticker</th>
-                    <th className="text-left pb-3">Price</th>
-                    <th className="text-left pb-3">Change</th>
-                    <th className="text-left pb-3">Volume</th>
+                    <th className="text-left pb-3 text-gray-400">Ticker</th>
+                    <th className="text-left pb-3 text-gray-400">Price</th>
+                    <th className="text-left pb-3 text-gray-400">Change</th>
+                    <th className="text-left pb-3 text-gray-400">Volume</th>
                     {activeTab === 'shorts' && (
                       <>
-                        <th className="text-left pb-3">SI %</th>
-                        <th className="text-left pb-3">CTB %</th>
-                        <th className="text-left pb-3">Util %</th>
-                        <th className="text-left pb-3">Score</th>
+                        <th className="text-left pb-3 text-gray-400">SI %</th>
+                        <th className="text-left pb-3 text-gray-400">CTB %</th>
+                        <th className="text-left pb-3 text-gray-400">Util %</th>
+                        <th className="text-left pb-3 text-gray-400">Score</th>
                       </>
                     )}
                     {activeTab === 'volume' && (
                       <>
-                        <th className="text-left pb-3">Avg Volume</th>
-                        <th className="text-left pb-3">Vol Ratio</th>
-                        <th className="text-left pb-3">Signal</th>
+                        <th className="text-left pb-3 text-gray-400">Avg Volume</th>
+                        <th className="text-left pb-3 text-gray-400">Vol Ratio</th>
+                        <th className="text-left pb-3 text-gray-400">Signal</th>
                       </>
                     )}
                     {activeTab === 'momentum' && (
-                      <th className="text-left pb-3">Trend</th>
+                      <th className="text-left pb-3 text-gray-400">Trend</th>
                     )}
                     {activeTab === 'squeeze' && (
                       <>
-                        <th className="text-left pb-3">High</th>
-                        <th className="text-left pb-3">Low</th>
+                        <th className="text-left pb-3 text-gray-400">High</th>
+                        <th className="text-left pb-3 text-gray-400">Low</th>
                       </>
                     )}
                   </tr>
@@ -329,8 +452,8 @@ export default function Home() {
                     <tr key={i} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-all">
                       <td className="py-3 font-bold text-blue-400">{r.ticker}</td>
                       <td className="py-3">${r.price?.toFixed(2)}</td>
-                      <td className={`py-3 ${parseFloat(r.change) > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {r.change}%
+                      <td className={`py-3 font-medium ${parseFloat(r.change) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {parseFloat(r.change) > 0 ? '+' : ''}{r.change}%
                       </td>
                       <td className="py-3">{(r.volume / 1000000).toFixed(1)}M</td>
                       {activeTab === 'shorts' && (
@@ -339,7 +462,7 @@ export default function Home() {
                           <td className="py-3">{r.costToBorrow?.toFixed(1)}%</td>
                           <td className="py-3">{r.utilization?.toFixed(1)}%</td>
                           <td className="py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-bold ${getSqueezeRating(r.squeezeScore || 0).color}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getSqueezeRating(r.squeezeScore || 0).color}`}>
                               {getSqueezeRating(r.squeezeScore || 0).text}
                             </span>
                           </td>
@@ -350,7 +473,7 @@ export default function Home() {
                           <td className="py-3">{(r.avgVolume / 1000000).toFixed(1)}M</td>
                           <td className="py-3">{r.volRatio}%</td>
                           <td className="py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                               r.signal === 'EXTREME' ? 'bg-red-500' : 
                               r.signal === 'HIGH' ? 'bg-orange-500' : 'bg-yellow-500'
                             } text-white`}>
@@ -361,7 +484,7 @@ export default function Home() {
                       )}
                       {activeTab === 'momentum' && (
                         <td className="py-3">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                             r.trend === 'BULLISH' ? 'bg-green-500' : 'bg-red-500'
                           } text-white`}>
                             {r.trend}
