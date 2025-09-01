@@ -38,25 +38,60 @@ const TradeFeedback = () => {
   const fetchMLMetrics = async () => {
     try {
       const response = await fetch('/api/trade-feedback?type=summary');
-      const data = await response.json();
-      if (data.success) {
-        setMLMetrics(data);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setMLMetrics(data);
+        } else {
+          // Initialize with default data if API fails
+          setMLMetrics({
+            summary: { totalTrades: 0, winRate: 0, avgConfidenceAccuracy: 50, activeTrades: 0 },
+            modelPerformance: {},
+            topStrategies: [],
+            topTickers: []
+          });
+        }
+      } else {
+        // Initialize with default data
+        setMLMetrics({
+          summary: { totalTrades: 0, winRate: 0, avgConfidenceAccuracy: 50, activeTrades: 0 },
+          modelPerformance: {},
+          topStrategies: [],
+          topTickers: []
+        });
       }
     } catch (error) {
       console.error('Error fetching ML metrics:', error);
+      // Initialize with default data
+      setMLMetrics({
+        summary: { totalTrades: 0, winRate: 0, avgConfidenceAccuracy: 50, activeTrades: 0 },
+        modelPerformance: {},
+        topStrategies: [],
+        topTickers: []
+      });
     }
   };
 
   const fetchTrades = async () => {
     try {
       const response = await fetch('/api/trade-feedback?type=trades&limit=20');
-      const data = await response.json();
-      if (data.success) {
-        setActiveTrades(data.trades.filter(t => t.status === 'ACTIVE'));
-        setRecentTrades(data.trades.slice(0, 10));
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setActiveTrades(data.trades.filter(t => t.status === 'ACTIVE'));
+          setRecentTrades(data.trades.slice(0, 10));
+        } else {
+          setActiveTrades([]);
+          setRecentTrades([]);
+        }
+      } else {
+        setActiveTrades([]);
+        setRecentTrades([]);
       }
     } catch (error) {
       console.error('Error fetching trades:', error);
+      setActiveTrades([]);
+      setRecentTrades([]);
     }
     setLoading(false);
   };
@@ -136,7 +171,21 @@ const TradeFeedback = () => {
     return 'text-red-400';
   };
 
-  const formatPercent = (num) => `${num?.toFixed(1)}%`;
+  // Safe number formatting helpers
+  const formatPercent = (num) => {
+    if (!num || isNaN(num) || num === null || num === undefined) return '0.0%';
+    return `${Number(num).toFixed(1)}%`;
+  };
+
+  const formatPrice = (price) => {
+    if (!price || isNaN(price) || price === null || price === undefined) return '0.00';
+    return Number(price).toFixed(2);
+  };
+
+  const formatNumber = (num, decimals = 1) => {
+    if (!num || isNaN(num) || num === null || num === undefined) return '0';
+    return Number(num).toFixed(decimals);
+  };
 
   return (
     <div className="space-y-6">
@@ -292,7 +341,7 @@ const TradeFeedback = () => {
                       {formatPercent(strategy.winRate)}
                     </div>
                     <div className="text-sm text-gray-500">
-                      Avg: {strategy.avgReturn?.toFixed(1)}%
+                      Avg: {formatNumber(strategy.avgReturn)}%
                     </div>
                   </div>
                 </div>
@@ -341,15 +390,15 @@ const TradeFeedback = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div>
                       <div className="text-xs text-gray-400">Entry Price</div>
-                      <div className="font-bold text-white">${trade.entry_price?.toFixed(2)}</div>
+                      <div className="font-bold text-white">${formatPrice(trade.entry_price)}</div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400">Target</div>
-                      <div className="font-bold text-green-400">${trade.target_price?.toFixed(2)}</div>
+                      <div className="font-bold text-green-400">${formatPrice(trade.target_price)}</div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400">Stop Loss</div>
-                      <div className="font-bold text-red-400">${trade.stop_loss?.toFixed(2)}</div>
+                      <div className="font-bold text-red-400">${formatPrice(trade.stop_loss)}</div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400">Position</div>
@@ -473,7 +522,7 @@ const TradeFeedback = () => {
 
               <div>
                 <label className="block text-sm text-gray-400 mb-1">
-                  ML Confidence: {(newTrade.confidence_score * 100).toFixed(0)}%
+                  ML Confidence: {formatNumber((newTrade.confidence_score || 0) * 100, 0)}%
                 </label>
                 <input
                   type="range"

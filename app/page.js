@@ -14,7 +14,7 @@ import MassScanner from './components/MassScanner';
 import TradeFeedback from './components/TradeFeedback';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('squeeze');
+  const [activeTab, setActiveTab] = useState('mass');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [tickers, setTickers] = useState('SPY,QQQ,AAPL,TSLA,NVDA');
@@ -541,7 +541,224 @@ export default function Home() {
             </div>
           )}
 
-          {/* Dashboard Grid */}
+        {/* ===== MAIN SCANNER SECTION - MOVED TO TOP ===== */}
+        {/* Tab Navigation - PRIORITY SCANNERS FIRST */}
+        <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-2 mb-6 flex gap-2 flex-wrap">
+          <button onClick={() => setActiveTab('mass')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'mass' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            🔍 Mass Scanner
+          </button>
+          <button onClick={() => setActiveTab('recs')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'recs' ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            ⭐ AI Picks
+          </button>
+          <button onClick={() => setActiveTab('feedback')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'feedback' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            🧠 ML Learning
+          </button>
+          <button onClick={() => setActiveTab('options')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'options' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            <Target size={16} className="inline mr-1" /> Options Flow
+          </button>
+          <button onClick={() => setActiveTab('squeeze')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'squeeze' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            🎯 Squeeze Scanner
+          </button>
+          <button onClick={() => setActiveTab('shorts')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'shorts' ? 'bg-gradient-to-r from-red-500 to-orange-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            🔥 Short Squeeze
+          </button>
+          <button onClick={() => setActiveTab('momentum')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'momentum' ? 'bg-gradient-to-r from-green-500 to-teal-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            🚀 Momentum
+          </button>
+          <button onClick={() => setActiveTab('volume')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'volume' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
+            📊 Volume Surge
+          </button>
+        </div>
+
+        {/* PRIORITY SCANNER CONTENT - FIRST PRIORITY */}
+        
+        {/* Mass Scanner Section - FIRST PRIORITY */}
+        {activeTab === 'mass' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            <MassScanner />
+          </div>
+        )}
+
+        {/* AI Recommendations Section - SECOND PRIORITY */}
+        {activeTab === 'recs' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            <AIRecommendations />
+          </div>
+        )}
+
+        {/* ML Learning Section - THIRD PRIORITY */}
+        {activeTab === 'feedback' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            <TradeFeedback />
+          </div>
+        )}
+
+        {/* OPTIONS SCANNER - FOURTH PRIORITY */}
+        {activeTab === 'options' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            <OptionsScanner />
+          </div>
+        )}
+
+        {/* TRADITIONAL SCANNER CONTROLS - LOWER PRIORITY */}
+        {activeTab !== 'recs' && activeTab !== 'options' && activeTab !== 'mass' && activeTab !== 'feedback' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            {(activeTab === 'squeeze' || activeTab === 'shorts') && (
+              <input
+                type="text"
+                value={activeTab === 'shorts' ? shortTickers : tickers}
+                onChange={(e) => activeTab === 'shorts' ? setShortTickers(e.target.value) : setTickers(e.target.value)}
+                className="w-full px-4 py-3 mb-4 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-white placeholder-gray-500"
+                placeholder="Enter tickers separated by commas..."
+              />
+            )}
+            
+            <button
+              onClick={scanStocks}
+              disabled={loading}
+              className={`w-full py-4 rounded-lg font-bold text-lg transition-all transform ${
+                loading 
+                  ? 'bg-gray-600 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 hover:scale-[1.02] shadow-lg'
+              }`}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Scanning Markets...
+                </span>
+              ) : (
+                `SCAN NOW ${activeTab === 'shorts' ? '🔥' : '🎯'}`
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Results Section - Only show for traditional scanners */}
+        {results.length > 0 && activeTab !== 'options' && activeTab !== 'mass' && activeTab !== 'recs' && activeTab !== 'feedback' && (
+          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Results</h2>
+              <button onClick={exportToCSV} className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all flex items-center gap-2">
+                <span>📥</span> Export CSV
+              </button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="text-left pb-3 text-gray-400">Ticker</th>
+                    <th className="text-left pb-3 text-gray-400">Price</th>
+                    <th className="text-left pb-3 text-gray-400">Change</th>
+                    <th className="text-left pb-3 text-gray-400">Volume</th>
+                    {activeTab === 'shorts' && (
+                      <>
+                        <th className="text-left pb-3 text-gray-400">SI %</th>
+                        <th className="text-left pb-3 text-gray-400">CTB %</th>
+                        <th className="text-left pb-3 text-gray-400">Util %</th>
+                        <th className="text-left pb-3 text-gray-400">Score</th>
+                      </>
+                    )}
+                    {activeTab === 'volume' && (
+                      <>
+                        <th className="text-left pb-3 text-gray-400">Avg Volume</th>
+                        <th className="text-left pb-3 text-gray-400">Vol Ratio</th>
+                        <th className="text-left pb-3 text-gray-400">Signal</th>
+                      </>
+                    )}
+                    {activeTab === 'momentum' && (
+                      <th className="text-left pb-3 text-gray-400">Trend</th>
+                    )}
+                    {activeTab === 'squeeze' && (
+                      <>
+                        <th className="text-left pb-3 text-gray-400">High</th>
+                        <th className="text-left pb-3 text-gray-400">Low</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((r, i) => (
+                    <tr key={i} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-all group">
+                      <td className="py-3 font-bold text-blue-400 relative">
+                        <div className="flex items-center gap-2">
+                          {r.ticker}
+                          <button 
+                            onClick={() => addToWatchlist(r.ticker, `Scanner Result ${r.ticker}`)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-blue-400 hover:bg-blue-400/20 rounded transition-all"
+                            title="Add to Watchlist"
+                          >
+                            <Plus size={14} />
+                          </button>
+                          <button 
+                            onClick={() => createAlert(r.ticker, r.price, 'above')}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-yellow-400 hover:bg-yellow-400/20 rounded transition-all"
+                            title="Create Alert"
+                          >
+                            <Bell size={14} />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="py-3">${r.price?.toFixed(2)}</td>
+                      <td className={`py-3 font-medium ${parseFloat(r.change) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {parseFloat(r.change) > 0 ? '+' : ''}{r.change}%
+                      </td>
+                      <td className="py-3">{(r.volume / 1000000).toFixed(1)}M</td>
+                      {activeTab === 'shorts' && (
+                        <>
+                          <td className="py-3">{r.shortInterest?.toFixed(1)}%</td>
+                          <td className="py-3">{r.costToBorrow?.toFixed(1)}%</td>
+                          <td className="py-3">{r.utilization?.toFixed(1)}%</td>
+                          <td className="py-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getSqueezeRating(r.squeezeScore || 0).color}`}>
+                              {getSqueezeRating(r.squeezeScore || 0).text}
+                            </span>
+                          </td>
+                        </>
+                      )}
+                      {activeTab === 'volume' && (
+                        <>
+                          <td className="py-3">{(r.avgVolume / 1000000).toFixed(1)}M</td>
+                          <td className="py-3">{r.volRatio}%</td>
+                          <td className="py-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              r.signal === 'EXTREME' ? 'bg-red-500' : 
+                              r.signal === 'HIGH' ? 'bg-orange-500' : 'bg-yellow-500'
+                            } text-white`}>
+                              {r.signal}
+                            </span>
+                          </td>
+                        </>
+                      )}
+                      {activeTab === 'momentum' && (
+                        <td className="py-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            r.trend === 'BULLISH' ? 'bg-green-500' : 'bg-red-500'
+                          } text-white`}>
+                            {r.trend}
+                          </span>
+                        </td>
+                      )}
+                      {activeTab === 'squeeze' && (
+                        <>
+                          <td className="py-3">${r.high?.toFixed(2)}</td>
+                          <td className="py-3">${r.low?.toFixed(2)}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {/* ===== END MAIN SCANNER SECTION ===== */}
+
+          {/* Dashboard Grid - MOVED BELOW SCANNERS */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
             {/* Watchlist Panel */}
             {showWatchlist && (
@@ -751,218 +968,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-2 mb-6 flex gap-2 flex-wrap">
-          <button onClick={() => setActiveTab('squeeze')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'squeeze' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
-            🎯 Squeeze Scanner
-          </button>
-          <button onClick={() => setActiveTab('shorts')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'shorts' ? 'bg-gradient-to-r from-red-500 to-orange-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
-            🔥 Short Squeeze
-          </button>
-          <button onClick={() => setActiveTab('momentum')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'momentum' ? 'bg-gradient-to-r from-green-500 to-teal-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
-            🚀 Momentum
-          </button>
-          <button onClick={() => setActiveTab('volume')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'volume' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
-            📊 Volume Surge
-          </button>
-          <button onClick={() => setActiveTab('options')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'options' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
-            <Target size={16} className="inline mr-1" /> Options Flow
-          </button>
-          <button onClick={() => setActiveTab('recs')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'recs' ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
-            ⭐ AI Picks
-          </button>
-          <button onClick={() => setActiveTab('mass')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'mass' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
-            🔍 Mass Scanner
-          </button>
-          <button onClick={() => setActiveTab('feedback')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'feedback' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}>
-            🧠 ML Learning
-          </button>
-        </div>
 
-        {/* Options Scanner */}
-        {activeTab === 'options' && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
-            <OptionsScanner />
-          </div>
-        )}
-
-        {/* Scanner Controls */}
-        {activeTab !== 'recs' && activeTab !== 'options' && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
-            {(activeTab === 'squeeze' || activeTab === 'shorts') && (
-              <input
-                type="text"
-                value={activeTab === 'shorts' ? shortTickers : tickers}
-                onChange={(e) => activeTab === 'shorts' ? setShortTickers(e.target.value) : setTickers(e.target.value)}
-                className="w-full px-4 py-3 mb-4 bg-gray-900/50 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-white placeholder-gray-500"
-                placeholder="Enter tickers separated by commas..."
-              />
-            )}
-            
-            <button
-              onClick={scanStocks}
-              disabled={loading}
-              className={`w-full py-4 rounded-lg font-bold text-lg transition-all transform ${
-                loading 
-                  ? 'bg-gray-600 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 hover:scale-[1.02] shadow-lg'
-              }`}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Scanning Markets...
-                </span>
-              ) : (
-                `SCAN NOW ${activeTab === 'shorts' ? '🔥' : '🎯'}`
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* AI Recommendations Section */}
-        {activeTab === 'recs' && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
-            <AIRecommendations />
-          </div>
-        )}
-
-        {/* Mass Scanner Section */}
-        {activeTab === 'mass' && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
-            <MassScanner />
-          </div>
-        )}
-
-        {/* ML Learning Section */}
-        {activeTab === 'feedback' && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
-            <TradeFeedback />
-          </div>
-        )}
-
-        {/* Results Section */}
-        {results.length > 0 && activeTab !== 'options' && (
-          <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 border border-gray-700/50">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Results</h2>
-              <button onClick={exportToCSV} className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all flex items-center gap-2">
-                <span>📥</span> Export CSV
-              </button>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-left pb-3 text-gray-400">Ticker</th>
-                    <th className="text-left pb-3 text-gray-400">Price</th>
-                    <th className="text-left pb-3 text-gray-400">Change</th>
-                    <th className="text-left pb-3 text-gray-400">Volume</th>
-                    {activeTab === 'shorts' && (
-                      <>
-                        <th className="text-left pb-3 text-gray-400">SI %</th>
-                        <th className="text-left pb-3 text-gray-400">CTB %</th>
-                        <th className="text-left pb-3 text-gray-400">Util %</th>
-                        <th className="text-left pb-3 text-gray-400">Score</th>
-                      </>
-                    )}
-                    {activeTab === 'volume' && (
-                      <>
-                        <th className="text-left pb-3 text-gray-400">Avg Volume</th>
-                        <th className="text-left pb-3 text-gray-400">Vol Ratio</th>
-                        <th className="text-left pb-3 text-gray-400">Signal</th>
-                      </>
-                    )}
-                    {activeTab === 'momentum' && (
-                      <th className="text-left pb-3 text-gray-400">Trend</th>
-                    )}
-                    {activeTab === 'squeeze' && (
-                      <>
-                        <th className="text-left pb-3 text-gray-400">High</th>
-                        <th className="text-left pb-3 text-gray-400">Low</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((r, i) => (
-                    <tr key={i} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-all group">
-                      <td className="py-3 font-bold text-blue-400 relative">
-                        <div className="flex items-center gap-2">
-                          {r.ticker}
-                          <button 
-                            onClick={() => addToWatchlist(r.ticker, `Scanner Result ${r.ticker}`)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-blue-400 hover:bg-blue-400/20 rounded transition-all"
-                            title="Add to Watchlist"
-                          >
-                            <Plus size={14} />
-                          </button>
-                          <button 
-                            onClick={() => createAlert(r.ticker, r.price, 'above')}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-yellow-400 hover:bg-yellow-400/20 rounded transition-all"
-                            title="Create Alert"
-                          >
-                            <Bell size={14} />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="py-3">${r.price?.toFixed(2)}</td>
-                      <td className={`py-3 font-medium ${parseFloat(r.change) > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {parseFloat(r.change) > 0 ? '+' : ''}{r.change}%
-                      </td>
-                      <td className="py-3">{(r.volume / 1000000).toFixed(1)}M</td>
-                      {activeTab === 'shorts' && (
-                        <>
-                          <td className="py-3">{r.shortInterest?.toFixed(1)}%</td>
-                          <td className="py-3">{r.costToBorrow?.toFixed(1)}%</td>
-                          <td className="py-3">{r.utilization?.toFixed(1)}%</td>
-                          <td className="py-3">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getSqueezeRating(r.squeezeScore || 0).color}`}>
-                              {getSqueezeRating(r.squeezeScore || 0).text}
-                            </span>
-                          </td>
-                        </>
-                      )}
-                      {activeTab === 'volume' && (
-                        <>
-                          <td className="py-3">{(r.avgVolume / 1000000).toFixed(1)}M</td>
-                          <td className="py-3">{r.volRatio}%</td>
-                          <td className="py-3">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                              r.signal === 'EXTREME' ? 'bg-red-500' : 
-                              r.signal === 'HIGH' ? 'bg-orange-500' : 'bg-yellow-500'
-                            } text-white`}>
-                              {r.signal}
-                            </span>
-                          </td>
-                        </>
-                      )}
-                      {activeTab === 'momentum' && (
-                        <td className="py-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            r.trend === 'BULLISH' ? 'bg-green-500' : 'bg-red-500'
-                          } text-white`}>
-                            {r.trend}
-                          </span>
-                        </td>
-                      )}
-                      {activeTab === 'squeeze' && (
-                        <>
-                          <td className="py-3">${r.high?.toFixed(2)}</td>
-                          <td className="py-3">${r.low?.toFixed(2)}</td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     </main>
     </>

@@ -30,24 +30,46 @@ const MassScanner = () => {
   const fetchScanCriteria = async () => {
     try {
       const response = await fetch('/api/mass-scanner?action=criteria');
-      const data = await response.json();
-      if (data.success) {
-        setScanCriteria(data.criteria);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setScanCriteria(data.criteria);
+        }
+      } else {
+        // Set default criteria if API fails
+        setScanCriteria([
+          { id: 'MOMENTUM_BREAKOUT', name: 'Momentum Breakout', description: 'Stocks breaking above 20-day MA with high volume' },
+          { id: 'VOLUME_SURGE', name: 'Volume Surge', description: 'High volume with price acceleration' },
+          { id: 'OVERSOLD_BOUNCE', name: 'Oversold Bounce', description: 'Oversold stocks showing early reversal signs' }
+        ]);
       }
     } catch (error) {
       console.error('Error fetching scan criteria:', error);
+      // Set default criteria
+      setScanCriteria([
+        { id: 'MOMENTUM_BREAKOUT', name: 'Momentum Breakout', description: 'Stocks breaking above 20-day MA with high volume' },
+        { id: 'VOLUME_SURGE', name: 'Volume Surge', description: 'High volume with price acceleration' },
+        { id: 'OVERSOLD_BOUNCE', name: 'Oversold Bounce', description: 'Oversold stocks showing early reversal signs' }
+      ]);
     }
   };
 
   const fetchSectors = async () => {
     try {
       const response = await fetch('/api/mass-scanner?action=sectors');
-      const data = await response.json();
-      if (data.success) {
-        setAvailableSectors(data.sectors);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setAvailableSectors(data.sectors);
+        }
+      } else {
+        // Set default sectors if API fails
+        setAvailableSectors(['Technology', 'Healthcare', 'Financial Services', 'Energy', 'Consumer Discretionary']);
       }
     } catch (error) {
       console.error('Error fetching sectors:', error);
+      // Set default sectors
+      setAvailableSectors(['Technology', 'Healthcare', 'Financial Services', 'Energy', 'Consumer Discretionary']);
     }
   };
 
@@ -124,11 +146,32 @@ const MassScanner = () => {
     return 'text-red-400 bg-red-500/20 border-red-500/30';
   };
 
+  // Safe number formatting helper
   const formatNumber = (num) => {
-    if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
+    if (!num || isNaN(num) || num === null || num === undefined) return '0';
+    const numVal = Number(num);
+    if (numVal >= 1000000000) return `${(numVal / 1000000000).toFixed(1)}B`;
+    if (numVal >= 1000000) return `${(numVal / 1000000).toFixed(1)}M`;
+    if (numVal >= 1000) return `${(numVal / 1000).toFixed(1)}K`;
+    return numVal.toString();
+  };
+
+  // Safe price formatting
+  const formatPrice = (price) => {
+    if (!price || isNaN(price) || price === null || price === undefined) return '0.00';
+    return Number(price).toFixed(2);
+  };
+
+  // Safe percentage formatting
+  const formatPercent = (percent) => {
+    if (!percent || isNaN(percent) || percent === null || percent === undefined) return '0.00';
+    return Number(percent).toFixed(2);
+  };
+
+  // Safe score formatting
+  const formatScore = (score) => {
+    if (!score || isNaN(score) || score === null || score === undefined) return '0';
+    return Number(score).toFixed(0);
   };
 
   const selectedCriteria = scanCriteria.find(c => c.id === selectedScan);
@@ -324,7 +367,7 @@ const MassScanner = () => {
               <Activity className="text-blue-400" size={20} />
             </div>
             <div className={`text-2xl font-bold ${getChangeColor(summary.avgChange || 0)}`}>
-              {summary.avgChange ? `${summary.avgChange.toFixed(2)}%` : '0%'}
+              {formatPercent(summary.avgChange)}%
             </div>
           </div>
 
@@ -390,11 +433,11 @@ const MassScanner = () => {
                     <div className="font-bold text-blue-400">{stock.ticker}</div>
                   </td>
                   <td className="p-4 text-white font-medium">
-                    ${stock.price?.toFixed(2)}
+                    ${formatPrice(stock.price)}
                   </td>
                   <td className="p-4">
                     <span className={`font-bold ${getChangeColor(stock.change)}`}>
-                      {stock.change > 0 ? '+' : ''}{stock.change?.toFixed(2)}%
+                      {stock.change > 0 ? '+' : ''}{formatPercent(stock.change)}%
                     </span>
                   </td>
                   <td className="p-4 text-gray-300">
@@ -408,12 +451,12 @@ const MassScanner = () => {
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold border ${getScoreColor(stock.momentumScore || 0)}`}>
-                      {(stock.momentumScore || 0).toFixed(0)}
+                      {formatScore(stock.momentumScore)}
                     </span>
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold border ${getScoreColor(stock.technicalScore || 0)}`}>
-                      {(stock.technicalScore || 0).toFixed(0)}
+                      {formatScore(stock.technicalScore)}
                     </span>
                   </td>
                 </tr>

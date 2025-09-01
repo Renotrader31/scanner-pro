@@ -15,6 +15,22 @@ const AIRecommendations = () => {
 
   const watchedTickers = ['SPY', 'QQQ', 'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMZN', 'META', 'GOOGL', 'AMD'];
 
+  // Safe number formatting helpers
+  const formatPrice = (price) => {
+    if (!price || isNaN(price) || price === null || price === undefined) return '0.00';
+    return Number(price).toFixed(2);
+  };
+
+  const formatPercent = (percent, decimals = 1) => {
+    if (!percent || isNaN(percent) || percent === null || percent === undefined) return '0.0';
+    return Number(percent).toFixed(decimals);
+  };
+
+  const formatNumber = (num, decimals = 0) => {
+    if (!num || isNaN(num) || num === null || num === undefined) return '0';
+    return Number(num).toFixed(decimals);
+  };
+
   useEffect(() => {
     fetchAIRecommendations();
     
@@ -45,7 +61,7 @@ const AIRecommendations = () => {
       const formattedMarketData = {
         ticker: selectedTicker,
         price: stockData.c,
-        change: ((stockData.c - stockData.o) / stockData.o * 100).toFixed(2),
+        change: formatPercent(((stockData.c - stockData.o) / stockData.o * 100), 2),
         volume: stockData.v,
         high: stockData.h,
         low: stockData.l
@@ -255,9 +271,9 @@ const AIRecommendations = () => {
                 {mlAnalysis.ml_analysis.price_prediction?.direction || 'NEUTRAL'}
               </div>
               <div className="mt-2 space-y-1 text-sm text-gray-400">
-                <div>Probability: {((mlAnalysis.ml_analysis.price_prediction?.probability || 0) * 100).toFixed(1)}%</div>
+                <div>Probability: {formatPercent((mlAnalysis.ml_analysis.price_prediction?.probability || 0) * 100)}%</div>
                 <div className={`${getConfidenceColor(mlAnalysis.ml_analysis.price_prediction?.confidence || 0)}`}>
-                  Confidence: {((mlAnalysis.ml_analysis.price_prediction?.confidence || 0) * 100).toFixed(1)}%
+                  Confidence: {formatPercent((mlAnalysis.ml_analysis.price_prediction?.confidence || 0) * 100)}%
                 </div>
               </div>
             </div>
@@ -272,8 +288,8 @@ const AIRecommendations = () => {
                 {mlAnalysis.ml_analysis.volatility_forecast?.prediction || 'STABLE'}
               </div>
               <div className="mt-2 space-y-1 text-sm text-gray-400">
-                <div>IV Rank: {(mlAnalysis.ml_analysis.volatility_forecast?.current_iv_rank || 0).toFixed(0)}%</div>
-                <div>Expected Change: {((mlAnalysis.ml_analysis.volatility_forecast?.expected_vol_change || 0) * 100).toFixed(1)}%</div>
+                <div>IV Rank: {formatNumber(mlAnalysis.ml_analysis.volatility_forecast?.current_iv_rank || 0)}%</div>
+                <div>Expected Change: {formatPercent((mlAnalysis.ml_analysis.volatility_forecast?.expected_vol_change || 0) * 100)}%</div>
               </div>
             </div>
 
@@ -288,7 +304,7 @@ const AIRecommendations = () => {
               </div>
               <div className="mt-2 space-y-1 text-sm text-gray-400">
                 <div className={`${getConfidenceColor(mlAnalysis.ml_analysis.composite_score?.confidence_score || 0)}`}>
-                  Score: {((mlAnalysis.ml_analysis.composite_score?.confidence_score || 0) * 100).toFixed(1)}%
+                  Score: {formatPercent((mlAnalysis.ml_analysis.composite_score?.confidence_score || 0) * 100)}%
                 </div>
                 <div>Risk Level: {mlAnalysis.ml_analysis.composite_score?.opportunity_level || 'MEDIUM'}</div>
               </div>
@@ -340,7 +356,7 @@ const AIRecommendations = () => {
                   </div>
                   <div className="text-right">
                     <div className={`text-lg font-bold ${getConfidenceColor(rec.confidence_score)}`}>
-                      {(rec.confidence_score * 100).toFixed(1)}%
+                      {formatPercent((rec.confidence_score || 0) * 100)}%
                     </div>
                     <div className="text-xs text-gray-400">Confidence</div>
                   </div>
@@ -361,15 +377,15 @@ const AIRecommendations = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-900/50 rounded-lg">
                   <div>
                     <div className="text-xs text-gray-400 uppercase tracking-wide">Entry Price</div>
-                    <div className="font-bold text-green-400">${rec.entry_price?.toFixed(2)}</div>
+                    <div className="font-bold text-green-400">${formatPrice(rec.entry_price)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-400 uppercase tracking-wide">Target</div>
-                    <div className="font-bold text-green-400">${rec.target_price?.toFixed(2)}</div>
+                    <div className="font-bold text-green-400">${formatPrice(rec.target_price)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-400 uppercase tracking-wide">Stop Loss</div>
-                    <div className="font-bold text-red-400">${rec.stop_loss?.toFixed(2)}</div>
+                    <div className="font-bold text-red-400">${formatPrice(rec.stop_loss)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-400 uppercase tracking-wide">Position Size</div>
@@ -383,22 +399,22 @@ const AIRecommendations = () => {
                   <div className="flex items-center gap-2">
                     <Shield className="text-red-400" size={14} />
                     <span className="text-gray-400">Max Risk:</span>
-                    <span className="font-bold text-red-400">${rec.max_risk?.toFixed(0)}</span>
+                    <span className="font-bold text-red-400">${formatNumber(rec.max_risk)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="text-green-400" size={14} />
                     <span className="text-gray-400">Max Reward:</span>
-                    <span className="font-bold text-green-400">${rec.max_reward?.toFixed(0)}</span>
+                    <span className="font-bold text-green-400">${formatNumber(rec.max_reward)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <BarChart3 className="text-blue-400" size={14} />
                     <span className="text-gray-400">R:R Ratio:</span>
-                    <span className="font-bold text-blue-400">{rec.risk_reward_ratio?.toFixed(1)}:1</span>
+                    <span className="font-bold text-blue-400">{formatNumber(rec.risk_reward_ratio, 1)}:1</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Target className="text-purple-400" size={14} />
                     <span className="text-gray-400">Win Prob:</span>
-                    <span className="font-bold text-purple-400">{(rec.probability_of_profit * 100).toFixed(0)}%</span>
+                    <span className="font-bold text-purple-400">{formatNumber((rec.probability_of_profit || 0) * 100)}%</span>
                   </div>
                 </div>
 
