@@ -7,8 +7,5 @@
     "app/api/**/*.js": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "POLYGON_API_KEY": "@polygon-api-key"
   }
 }
