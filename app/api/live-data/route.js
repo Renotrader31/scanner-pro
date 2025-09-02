@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { STOCK_UNIVERSE, generateMarketData } from '../lib/market-data.js';
+import { getRealMarketData } from '../lib/real-market-data.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,14 +131,23 @@ export async function GET(request) {
     }
     
     if (type === 'snapshot') {
-      const marketData = generateMarketData();
+      // Try to get real market data first
+      let marketData;
+      try {
+        marketData = await getRealMarketData();
+        console.log(`Using real market data: ${marketData.length} stocks`);
+      } catch (error) {
+        console.log('Fallback to generated data:', error.message);
+        marketData = generateMarketData();
+      }
       
       return NextResponse.json({
         success: true,
         data: marketData,
         totalStocks: marketData.length,
         timestamp: Date.now(),
-        marketStatus: getMarketStatus()
+        marketStatus: getMarketStatus(),
+        dataSource: marketData.length > 0 && marketData[0].marketCap ? 'REAL' : 'SIMULATED'
       });
     }
     

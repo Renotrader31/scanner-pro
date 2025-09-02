@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getMarketSnapshot } from '../lib/market-data.js';
+import { getRealMarketData } from '../lib/real-market-data.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -311,15 +312,21 @@ export async function POST(request) {
       sectors = requestData.sectors || []
     } = requestData;
 
-    // Get live market data directly
-    const liveDataResult = getMarketSnapshot();
-    
-    if (!liveDataResult.success) {
-      throw new Error('Failed to fetch live market data');
+    // Get REAL live market data
+    let marketData;
+    try {
+      // Try to fetch real data from Polygon
+      marketData = await getRealMarketData();
+      console.log(`Fetched real data for ${marketData.length} symbols`);
+    } catch (error) {
+      console.log('Using fallback data:', error.message);
+      // Fall back to simulated data if real API fails
+      const liveDataResult = getMarketSnapshot();
+      marketData = liveDataResult.data;
     }
 
     // Map symbol to ticker for compatibility
-    const mappedData = liveDataResult.data.map(stock => ({
+    const mappedData = marketData.map(stock => ({
       ...stock,
       ticker: stock.symbol  // Add ticker field from symbol
     }));
