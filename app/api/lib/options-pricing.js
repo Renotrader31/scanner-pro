@@ -1,6 +1,8 @@
 // Options pricing utilities for real data integration
+import { getFMPOptionsChain, getFMPQuote } from './fmp-options.js';
 
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY || '75rlu6cWGNnIqqR_x8M384YUjBgGk6kT';
+const USE_FMP_FOR_BIDASK = true; // Enable FMP for real bid/ask data
 
 export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
   try {
@@ -18,6 +20,28 @@ export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
     const expDateString = expirationDate.toISOString().split('T')[0];
     
     console.log(`Fetching options for ${ticker} with expiration around ${expDateString}`);
+    
+    // Try FMP first for real bid/ask data
+    if (USE_FMP_FOR_BIDASK) {
+      try {
+        const fmpOptions = await getFMPOptionsChain(ticker, expDateString);
+        if (fmpOptions && (fmpOptions.calls.length > 0 || fmpOptions.puts.length > 0)) {
+          console.log(`Using FMP data for ${ticker}: ${fmpOptions.calls.length} calls, ${fmpOptions.puts.length} puts with real bid/ask`);
+          
+          // Get stock price from FMP
+          const fmpQuote = await getFMPQuote(ticker);
+          const stockPrice = fmpQuote?.price || 100;
+          
+          return {
+            ...fmpOptions,
+            stockPrice,
+            expirationDate: expDateString
+          };
+        }
+      } catch (fmpError) {
+        console.log('FMP options fetch failed, falling back to Polygon:', fmpError.message);
+      }
+    }
 
     // Fetch current stock price
     const stockResponse = await fetch(

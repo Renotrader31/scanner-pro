@@ -345,10 +345,15 @@ export async function POST(request) {
 
     // Apply screening criteria
     const criteria = SCREENING_CRITERIA[scanType];
-    if (scanType === 'ALL') {
+    if (scanType === 'ALL' || scanType === 'ALL_STOCKS') {
       // Don't apply any additional filtering for ALL
+      console.log('Showing all stocks without criteria filtering');
     } else if (criteria && criteria.criteria) {
+      const beforeFilter = filteredStocks.length;
       filteredStocks = filteredStocks.filter(criteria.criteria);
+      console.log(`Applied ${scanType} criteria: ${beforeFilter} -> ${filteredStocks.length} stocks`);
+    } else {
+      console.log(`No criteria found for scanType: ${scanType}, showing all stocks`);
     }
 
     // Apply additional custom filters
@@ -376,7 +381,16 @@ export async function POST(request) {
     });
 
     // Limit results
-    const results = filteredStocks.slice(0, limit);
+    let results = filteredStocks.slice(0, limit);
+    
+    // If no results, provide fallback data
+    if (results.length === 0 && enrichedStocks.length > 0) {
+      console.log(`No stocks matched ${scanType} criteria, providing top movers as fallback`);
+      // Get top 20 movers by absolute change as fallback
+      results = [...enrichedStocks]
+        .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+        .slice(0, Math.min(20, limit));
+    }
 
     // Calculate summary statistics
     const summary = {
@@ -386,7 +400,10 @@ export async function POST(request) {
       avgChange: results.reduce((sum, s) => sum + s.change, 0) / results.length || 0,
       avgVolume: results.reduce((sum, s) => sum + s.volume, 0) / results.length || 0,
       topSectors: getTopSectors(results),
-      marketCapDistribution: getMarketCapDistribution(results)
+      marketCapDistribution: getMarketCapDistribution(results),
+      message: filteredStocks.length === 0 && results.length > 0 
+        ? `No exact matches for ${scanType}. Showing top movers.` 
+        : null
     };
 
     return NextResponse.json({
