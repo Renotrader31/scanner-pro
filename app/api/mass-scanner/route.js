@@ -297,18 +297,19 @@ const calculateTechnicalScore = (rsi, bollingerPos, change) => {
 
 export async function POST(request) {
   try {
+    const requestData = await request.json();
     const { 
-      scanType = 'MOMENTUM_BREAKOUT', 
+      scanType = requestData.criteria || 'MOMENTUM_BREAKOUT',  // Support both 'scanType' and 'criteria' params
       filters = {}, 
       sortBy = 'change', 
       sortOrder = 'desc',
       limit = 50,
-      minPrice = 1,
-      maxPrice = 10000,
-      minVolume = 100000,
-      minMarketCap = 0,
-      sectors = []
-    } = await request.json();
+      minPrice = requestData.minPrice !== undefined ? requestData.minPrice : 1,
+      maxPrice = requestData.maxPrice !== undefined ? requestData.maxPrice : 10000,
+      minVolume = requestData.minVolume !== undefined ? requestData.minVolume : 100000,
+      minMarketCap = requestData.minMarketCap !== undefined ? requestData.minMarketCap : 0,
+      sectors = requestData.sectors || []
+    } = requestData;
 
     // Get live market data directly
     const liveDataResult = getMarketSnapshot();
