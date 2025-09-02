@@ -302,116 +302,342 @@ async function generateRecommendations(ticker, marketData, mlAnalysis, accountSi
   
   // 3. ADVANCED TRADING STRATEGIES (15+ Strategies)
   
-  // Strategy 3: Long Straddle (Volatility Expansion)
-  if (volForecast.prediction === 'EXPANSION' && confidence > 0.6) {
-    const atmStrike = Math.round(stockPrice);
-    const totalPremium = stockPrice * 0.06 + Math.random() * stockPrice * 0.04;
+  // Strategy 3: Long Straddle (Volatility Expansion) with Real Options
+  if (volForecast.prediction === 'EXPANSION' && confidence > 0.6 && optionsChain.calls.length > 0 && optionsChain.puts.length > 0) {
+    // Find ATM options for long straddle
+    const atmCallOption = findBestOption(optionsChain, 'call', stockPrice);
+    const atmPutOption = findBestOption(optionsChain, 'put', stockPrice);
+    
+    // Calculate real total premium from actual options
+    const callPremium = atmCallOption.ask || (stockPrice * 0.03);
+    const putPremium = atmPutOption.ask || (stockPrice * 0.03);
+    const totalPremium = callPremium + putPremium;
     const contracts = Math.max(1, Math.floor((accountSize * 0.03) / (totalPremium * 100)));
+    
+    const maxRisk = contracts * totalPremium * 100;
+    const maxReward = contracts * totalPremium * 300; // Theoretical unlimited
     
     recommendations.push({
       id: `${ticker}_straddle_${Date.now()}`,
-      ticker, trade_type: 'long_straddle', direction: 'NEUTRAL',
-      entry_price: totalPremium, target_price: totalPremium * 1.5, stop_loss: totalPremium * 0.6,
-      position_size: contracts, risk_reward_ratio: 2.0, probability_of_profit: 0.65,
-      max_risk: contracts * totalPremium * 100, max_reward: contracts * totalPremium * 300,
-      time_horizon: '21 days', confidence_score: confidence * 0.8, ml_rating: rating,
-      strategy_description: `Long straddle to profit from ML-predicted volatility expansion`,
-      risk_level: riskLevel, expiry_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      strike_prices: [atmStrike, atmStrike], premium: totalPremium,
-      reasons: [`ML predicts volatility expansion with ${(confidence * 100).toFixed(1)}% confidence`, `ATM straddle at $${atmStrike}`, 'Benefits from movement in either direction'],
+      ticker, 
+      trade_type: 'long_straddle', 
+      direction: 'NEUTRAL',
+      entry_price: totalPremium, 
+      target_price: totalPremium * 1.5, 
+      stop_loss: totalPremium * 0.6,
+      position_size: contracts, 
+      risk_reward_ratio: 2.0, 
+      probability_of_profit: 0.65,
+      max_risk: maxRisk, 
+      max_reward: maxReward,
+      time_horizon: `${expiryDays} days`, 
+      confidence_score: confidence * 0.8, 
+      ml_rating: rating,
+      strategy_description: `Long Straddle: Buy ${ticker} $${atmCallOption.strike} Call @ $${callPremium.toFixed(2)}, Buy $${atmPutOption.strike} Put @ $${putPremium.toFixed(2)} (Total Cost: $${totalPremium.toFixed(2)})`,
+      risk_level: riskLevel, 
+      expiry_date: atmCallOption.expiration,
+      strike_prices: [atmCallOption.strike, atmPutOption.strike], 
+      premium: totalPremium,
+      implied_volatility: (atmCallOption.iv + atmPutOption.iv) * 50,
+      options_details: [
+        {
+          leg: 'Long Call',
+          strike: atmCallOption.strike,
+          bid: atmCallOption.bid,
+          ask: atmCallOption.ask,
+          iv: atmCallOption.iv * 100,
+          volume: atmCallOption.volume,
+          openInterest: atmCallOption.openInterest,
+          delta: atmCallOption.delta,
+          theta: atmCallOption.theta
+        },
+        {
+          leg: 'Long Put',
+          strike: atmPutOption.strike,
+          bid: atmPutOption.bid,
+          ask: atmPutOption.ask,
+          iv: atmPutOption.iv * 100,
+          volume: atmPutOption.volume,
+          openInterest: atmPutOption.openInterest,
+          delta: atmPutOption.delta,
+          theta: atmPutOption.theta
+        }
+      ],
+      reasons: [
+        `ML predicts volatility expansion with ${(confidence * 100).toFixed(1)}% confidence`,
+        `Long $${atmCallOption.strike} Call: Bid $${atmCallOption.bid.toFixed(2)}, Ask $${atmCallOption.ask.toFixed(2)}, IV ${(atmCallOption.iv * 100).toFixed(1)}%`,
+        `Long $${atmPutOption.strike} Put: Bid $${atmPutOption.bid.toFixed(2)}, Ask $${atmPutOption.ask.toFixed(2)}, IV ${(atmPutOption.iv * 100).toFixed(1)}%`,
+        `Benefits from movement in either direction, Total cost: $${totalPremium.toFixed(2)}`
+      ],
       created_at: new Date().toISOString()
     });
   }
 
-  // Strategy 4: Short Strangle (High IV Crush)
-  if (features.implied_volatility > 40 && confidence > 0.55) {
-    const otmCallStrike = Math.round(stockPrice * 1.05);
-    const otmPutStrike = Math.round(stockPrice * 0.95);
-    const totalCredit = stockPrice * 0.03 + Math.random() * stockPrice * 0.02;
+  // Strategy 4: Short Strangle (High IV Crush) with Real Options
+  if (features.implied_volatility > 40 && confidence > 0.55 && optionsChain.calls.length > 0 && optionsChain.puts.length > 0) {
+    // Find real strikes for short strangle
+    const shortCallOption = findBestOption(optionsChain, 'call', stockPrice * 1.05); // OTM call to sell
+    const shortPutOption = findBestOption(optionsChain, 'put', stockPrice * 0.95); // OTM put to sell
+    
+    // Calculate real net credit from actual options
+    const callCredit = shortCallOption.bid || (stockPrice * 0.015);
+    const putCredit = shortPutOption.bid || (stockPrice * 0.015);
+    const totalCredit = callCredit + putCredit;
     const contracts = Math.max(1, Math.floor((accountSize * 0.02) / (stockPrice * 100)));
+    
+    const maxRisk = contracts * stockPrice * 10; // Theoretical unlimited risk
+    const maxReward = contracts * totalCredit * 100;
     
     recommendations.push({
       id: `${ticker}_short_strangle_${Date.now()}`,
-      ticker, trade_type: 'short_strangle', direction: 'NEUTRAL',
-      entry_price: -totalCredit, target_price: -totalCredit * 0.5, stop_loss: -totalCredit * 2,
-      position_size: contracts, risk_reward_ratio: 2.0, probability_of_profit: 0.68,
-      max_risk: contracts * stockPrice * 10, max_reward: contracts * totalCredit * 100,
-      time_horizon: '30 days', confidence_score: confidence * 0.75, ml_rating: rating,
-      strategy_description: `Short strangle to profit from high IV crush and sideways movement`,
-      risk_level: riskLevel, expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      strike_prices: [otmCallStrike, otmPutStrike], premium: totalCredit,
-      reasons: [`High IV ${features.implied_volatility.toFixed(1)}% suggests overpriced options`, `Profit zone: $${otmPutStrike}-$${otmCallStrike}`, 'Time decay advantage'],
+      ticker, 
+      trade_type: 'short_strangle', 
+      direction: 'NEUTRAL',
+      entry_price: -totalCredit, 
+      target_price: -totalCredit * 0.5, 
+      stop_loss: -totalCredit * 2,
+      position_size: contracts, 
+      risk_reward_ratio: 2.0, 
+      probability_of_profit: 0.68,
+      max_risk: maxRisk, 
+      max_reward: maxReward,
+      time_horizon: `${expiryDays} days`, 
+      confidence_score: confidence * 0.75, 
+      ml_rating: rating,
+      strategy_description: `Short Strangle: Sell ${ticker} $${shortCallOption.strike} Call @ $${callCredit.toFixed(2)}, Sell $${shortPutOption.strike} Put @ $${putCredit.toFixed(2)} (Net Credit: $${totalCredit.toFixed(2)})`,
+      risk_level: riskLevel, 
+      expiry_date: shortCallOption.expiration,
+      strike_prices: [shortCallOption.strike, shortPutOption.strike], 
+      premium: totalCredit,
+      implied_volatility: (shortCallOption.iv + shortPutOption.iv) * 50,
+      options_details: [
+        {
+          leg: 'Short Call',
+          strike: shortCallOption.strike,
+          bid: shortCallOption.bid,
+          ask: shortCallOption.ask,
+          iv: shortCallOption.iv * 100,
+          volume: shortCallOption.volume,
+          openInterest: shortCallOption.openInterest,
+          delta: shortCallOption.delta,
+          theta: shortCallOption.theta
+        },
+        {
+          leg: 'Short Put',
+          strike: shortPutOption.strike,
+          bid: shortPutOption.bid,
+          ask: shortPutOption.ask,
+          iv: shortPutOption.iv * 100,
+          volume: shortPutOption.volume,
+          openInterest: shortPutOption.openInterest,
+          delta: shortPutOption.delta,
+          theta: shortPutOption.theta
+        }
+      ],
+      reasons: [
+        `High IV ${features.implied_volatility.toFixed(1)}% suggests overpriced options`,
+        `Short $${shortCallOption.strike} Call: Bid $${shortCallOption.bid.toFixed(2)}, Ask $${shortCallOption.ask.toFixed(2)}, IV ${(shortCallOption.iv * 100).toFixed(1)}%`,
+        `Short $${shortPutOption.strike} Put: Bid $${shortPutOption.bid.toFixed(2)}, Ask $${shortPutOption.ask.toFixed(2)}, IV ${(shortPutOption.iv * 100).toFixed(1)}%`,
+        `Profit zone: $${shortPutOption.strike}-$${shortCallOption.strike}, Net credit: $${totalCredit.toFixed(2)}`
+      ],
       created_at: new Date().toISOString()
     });
   }
 
-  // Strategy 5: Iron Condor (Range-Bound Market)
-  if (volForecast.prediction === 'STABLE' && confidence > 0.65) {
-    const strikes = {
-      longPut: Math.round(stockPrice * 0.92),
-      shortPut: Math.round(stockPrice * 0.96),
-      shortCall: Math.round(stockPrice * 1.04),
-      longCall: Math.round(stockPrice * 1.08)
-    };
-    const netCredit = stockPrice * 0.015 + Math.random() * stockPrice * 0.01;
-    const contracts = Math.max(1, Math.floor((accountSize * 0.04) / 400));
+  // Strategy 5: Iron Condor (Range-Bound Market) with Real Options
+  if (volForecast.prediction === 'STABLE' && confidence > 0.65 && optionsChain.calls.length > 0 && optionsChain.puts.length > 0) {
+    // Find real strikes for iron condor
+    const longPutOption = findBestOption(optionsChain, 'put', stockPrice * 0.92);
+    const shortPutOption = findBestOption(optionsChain, 'put', stockPrice * 0.96);
+    const shortCallOption = findBestOption(optionsChain, 'call', stockPrice * 1.04);
+    const longCallOption = findBestOption(optionsChain, 'call', stockPrice * 1.08);
+    
+    // Calculate real net credit from actual options
+    const putSpread = calculateSpreadPrices(longPutOption, shortPutOption, 'credit');
+    const callSpread = calculateSpreadPrices(longCallOption, shortCallOption, 'credit');
+    const netCredit = putSpread.credit + callSpread.credit;
+    const maxWidth = Math.max(
+      shortPutOption.strike - longPutOption.strike,
+      longCallOption.strike - shortCallOption.strike
+    );
+    const maxRisk = maxWidth - netCredit;
+    const contracts = Math.max(1, Math.floor((accountSize * 0.04) / (maxRisk * 100)));
     
     recommendations.push({
       id: `${ticker}_iron_condor_${Date.now()}`,
-      ticker, trade_type: 'iron_condor', direction: 'NEUTRAL',
-      entry_price: -netCredit, target_price: -netCredit * 0.3, stop_loss: -netCredit * 3,
-      position_size: contracts, risk_reward_ratio: 1.5, probability_of_profit: 0.72,
-      max_risk: contracts * 400, max_reward: contracts * netCredit * 100,
-      time_horizon: '35 days', confidence_score: confidence * 0.8, ml_rating: rating,
-      strategy_description: `Iron condor to profit from range-bound price action and theta decay`,
-      risk_level: riskLevel, expiry_date: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      strike_prices: [strikes.longPut, strikes.shortPut, strikes.shortCall, strikes.longCall],
+      ticker, 
+      trade_type: 'iron_condor', 
+      direction: 'NEUTRAL',
+      entry_price: netCredit,
+      target_price: netCredit * 0.5,
+      stop_loss: -maxRisk,
+      position_size: contracts,
+      risk_reward_ratio: netCredit / maxRisk,
+      probability_of_profit: 0.68,
+      max_risk: contracts * maxRisk * 100,
+      max_reward: contracts * netCredit * 100,
+      time_horizon: `${Math.floor((new Date(optionsChain.expirationDate) - new Date()) / (1000 * 60 * 60 * 24))} days`,
+      confidence_score: confidence * 0.8,
+      ml_rating: rating,
+      strategy_description: `Sell Iron Condor: ${longPutOption.strike}/${shortPutOption.strike}/${shortCallOption.strike}/${longCallOption.strike} @ $${netCredit.toFixed(2)} credit (Exp: ${optionsChain.expirationDate})`,
+      risk_level: riskLevel,
+      expiry_date: optionsChain.expirationDate,
+      strike_prices: [longPutOption.strike, shortPutOption.strike, shortCallOption.strike, longCallOption.strike],
+      option_details: {
+        longPut: { strike: longPutOption.strike, bid: longPutOption.bid, ask: longPutOption.ask, iv: longPutOption.iv },
+        shortPut: { strike: shortPutOption.strike, bid: shortPutOption.bid, ask: shortPutOption.ask, iv: shortPutOption.iv },
+        shortCall: { strike: shortCallOption.strike, bid: shortCallOption.bid, ask: shortCallOption.ask, iv: shortCallOption.iv },
+        longCall: { strike: longCallOption.strike, bid: longCallOption.bid, ask: longCallOption.ask, iv: longCallOption.iv }
+      },
       premium: netCredit,
-      reasons: [`ML predicts stable price action`, `Profit zone: $${strikes.shortPut}-$${strikes.shortCall}`, 'Multiple income sources'],
+      reasons: [
+        `ML predicts stable price action with ${(confidence * 100).toFixed(1)}% confidence`,
+        `Profit zone: $${shortPutOption.strike} - $${shortCallOption.strike}`,
+        `Max profit: $${(netCredit * 100 * contracts).toFixed(0)} • Max loss: $${(maxRisk * 100 * contracts).toFixed(0)}`,
+        `Theta decay: Collect premium from time decay`
+      ],
       created_at: new Date().toISOString()
     });
   }
 
-  // Strategy 6: Bull Call Spread (Moderate Bullish)
-  if (direction === 'BULLISH' && confidence >= 0.6 && confidence <= 0.8) {
-    const atmStrike = Math.round(stockPrice);
-    const otmStrike = Math.round(stockPrice * 1.05);
-    const netDebit = stockPrice * 0.025 + Math.random() * stockPrice * 0.015;
+  // Strategy 6: Bull Call Spread (Moderate Bullish) with Real Options
+  if (direction === 'BULLISH' && confidence >= 0.6 && confidence <= 0.8 && optionsChain.calls.length > 0) {
+    // Find real strikes for bull call spread
+    const longCallOption = findBestOption(optionsChain, 'call', stockPrice); // ATM call to buy
+    const shortCallOption = findBestOption(optionsChain, 'call', stockPrice * 1.05); // OTM call to sell
+    
+    // Calculate real net debit from actual options
+    const longPremium = longCallOption.ask || (stockPrice * 0.03);
+    const shortPremium = shortCallOption.bid || (stockPrice * 0.015);
+    const netDebit = longPremium - shortPremium;
     const contracts = Math.max(1, Math.floor((accountSize * params.maxRiskPct) / (netDebit * 100)));
+    
+    const maxRisk = contracts * netDebit * 100;
+    const maxReward = contracts * (shortCallOption.strike - longCallOption.strike - netDebit) * 100;
     
     recommendations.push({
       id: `${ticker}_bull_call_spread_${Date.now()}`,
-      ticker, trade_type: 'bull_call_spread', direction: 'BULLISH',
-      entry_price: netDebit, target_price: (otmStrike - atmStrike) * 0.7, stop_loss: netDebit * 0.5,
-      position_size: contracts, risk_reward_ratio: 2.5, probability_of_profit: pricePred.probability * 0.85 || 0.65,
-      max_risk: contracts * netDebit * 100, max_reward: contracts * (otmStrike - atmStrike - netDebit) * 100,
-      time_horizon: '25 days', confidence_score: confidence * 0.85, ml_rating: rating,
-      strategy_description: `Bull call spread for moderate upside with limited risk`,
-      risk_level: riskLevel, expiry_date: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      strike_prices: [atmStrike, otmStrike], premium: netDebit,
-      reasons: [`Moderate bullish outlook with ${(confidence * 100).toFixed(1)}% confidence`, `Max profit at $${otmStrike}`, 'Lower cost than long calls'],
+      ticker, 
+      trade_type: 'bull_call_spread', 
+      direction: 'BULLISH',
+      entry_price: netDebit, 
+      target_price: (shortCallOption.strike - longCallOption.strike) * 0.7, 
+      stop_loss: netDebit * 0.5,
+      position_size: contracts, 
+      risk_reward_ratio: maxReward / maxRisk, 
+      probability_of_profit: pricePred.probability * 0.85 || 0.65,
+      max_risk: maxRisk, 
+      max_reward: maxReward,
+      time_horizon: `${expiryDays} days`, 
+      confidence_score: confidence * 0.85, 
+      ml_rating: rating,
+      strategy_description: `Bull Call Spread: Buy ${ticker} $${longCallOption.strike} Call @ $${longPremium.toFixed(2)}, Sell $${shortCallOption.strike} Call @ $${shortPremium.toFixed(2)} (Net Debit: $${netDebit.toFixed(2)})`,
+      risk_level: riskLevel, 
+      expiry_date: longCallOption.expiration,
+      strike_prices: [longCallOption.strike, shortCallOption.strike], 
+      premium: netDebit,
+      implied_volatility: (longCallOption.iv + shortCallOption.iv) * 50,
+      options_details: [
+        {
+          leg: 'Long Call',
+          strike: longCallOption.strike,
+          bid: longCallOption.bid,
+          ask: longCallOption.ask,
+          iv: longCallOption.iv * 100,
+          volume: longCallOption.volume,
+          openInterest: longCallOption.openInterest,
+          delta: longCallOption.delta,
+          theta: longCallOption.theta
+        },
+        {
+          leg: 'Short Call',
+          strike: shortCallOption.strike,
+          bid: shortCallOption.bid,
+          ask: shortCallOption.ask,
+          iv: shortCallOption.iv * 100,
+          volume: shortCallOption.volume,
+          openInterest: shortCallOption.openInterest,
+          delta: shortCallOption.delta,
+          theta: shortCallOption.theta
+        }
+      ],
+      reasons: [
+        `Moderate bullish outlook with ${(confidence * 100).toFixed(1)}% confidence`,
+        `Long $${longCallOption.strike} Call: Bid $${longCallOption.bid.toFixed(2)}, Ask $${longCallOption.ask.toFixed(2)}, IV ${(longCallOption.iv * 100).toFixed(1)}%`,
+        `Short $${shortCallOption.strike} Call: Bid $${shortCallOption.bid.toFixed(2)}, Ask $${shortCallOption.ask.toFixed(2)}, IV ${(shortCallOption.iv * 100).toFixed(1)}%`,
+        `Max profit at $${shortCallOption.strike}, Net debit: $${netDebit.toFixed(2)}`
+      ],
       created_at: new Date().toISOString()
     });
   }
 
-  // Strategy 7: Bear Put Spread (Moderate Bearish)
-  if (direction === 'BEARISH' && confidence >= 0.6 && confidence <= 0.8) {
-    const atmStrike = Math.round(stockPrice);
-    const otmStrike = Math.round(stockPrice * 0.95);
-    const netDebit = stockPrice * 0.025 + Math.random() * stockPrice * 0.015;
+  // Strategy 7: Bear Put Spread (Moderate Bearish) with Real Options
+  if (direction === 'BEARISH' && confidence >= 0.6 && confidence <= 0.8 && optionsChain.puts.length > 0) {
+    // Find real strikes for bear put spread
+    const longPutOption = findBestOption(optionsChain, 'put', stockPrice); // ATM put to buy
+    const shortPutOption = findBestOption(optionsChain, 'put', stockPrice * 0.95); // OTM put to sell
+    
+    // Calculate real net debit from actual options
+    const longPremium = longPutOption.ask || (stockPrice * 0.03);
+    const shortPremium = shortPutOption.bid || (stockPrice * 0.015);
+    const netDebit = longPremium - shortPremium;
     const contracts = Math.max(1, Math.floor((accountSize * params.maxRiskPct) / (netDebit * 100)));
+    
+    const maxRisk = contracts * netDebit * 100;
+    const maxReward = contracts * (longPutOption.strike - shortPutOption.strike - netDebit) * 100;
     
     recommendations.push({
       id: `${ticker}_bear_put_spread_${Date.now()}`,
-      ticker, trade_type: 'bear_put_spread', direction: 'BEARISH',
-      entry_price: netDebit, target_price: (atmStrike - otmStrike) * 0.7, stop_loss: netDebit * 0.5,
-      position_size: contracts, risk_reward_ratio: 2.5, probability_of_profit: pricePred.probability * 0.85 || 0.65,
-      max_risk: contracts * netDebit * 100, max_reward: contracts * (atmStrike - otmStrike - netDebit) * 100,
-      time_horizon: '25 days', confidence_score: confidence * 0.85, ml_rating: rating,
-      strategy_description: `Bear put spread for moderate downside with limited risk`,
-      risk_level: riskLevel, expiry_date: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      strike_prices: [atmStrike, otmStrike], premium: netDebit,
-      reasons: [`Moderate bearish outlook with ${(confidence * 100).toFixed(1)}% confidence`, `Max profit at $${otmStrike}`, 'Lower cost than long puts'],
+      ticker, 
+      trade_type: 'bear_put_spread', 
+      direction: 'BEARISH',
+      entry_price: netDebit, 
+      target_price: (longPutOption.strike - shortPutOption.strike) * 0.7, 
+      stop_loss: netDebit * 0.5,
+      position_size: contracts, 
+      risk_reward_ratio: maxReward / maxRisk, 
+      probability_of_profit: pricePred.probability * 0.85 || 0.65,
+      max_risk: maxRisk, 
+      max_reward: maxReward,
+      time_horizon: `${expiryDays} days`, 
+      confidence_score: confidence * 0.85, 
+      ml_rating: rating,
+      strategy_description: `Bear Put Spread: Buy ${ticker} $${longPutOption.strike} Put @ $${longPremium.toFixed(2)}, Sell $${shortPutOption.strike} Put @ $${shortPremium.toFixed(2)} (Net Debit: $${netDebit.toFixed(2)})`,
+      risk_level: riskLevel, 
+      expiry_date: longPutOption.expiration,
+      strike_prices: [longPutOption.strike, shortPutOption.strike], 
+      premium: netDebit,
+      implied_volatility: (longPutOption.iv + shortPutOption.iv) * 50,
+      options_details: [
+        {
+          leg: 'Long Put',
+          strike: longPutOption.strike,
+          bid: longPutOption.bid,
+          ask: longPutOption.ask,
+          iv: longPutOption.iv * 100,
+          volume: longPutOption.volume,
+          openInterest: longPutOption.openInterest,
+          delta: longPutOption.delta,
+          theta: longPutOption.theta
+        },
+        {
+          leg: 'Short Put',
+          strike: shortPutOption.strike,
+          bid: shortPutOption.bid,
+          ask: shortPutOption.ask,
+          iv: shortPutOption.iv * 100,
+          volume: shortPutOption.volume,
+          openInterest: shortPutOption.openInterest,
+          delta: shortPutOption.delta,
+          theta: shortPutOption.theta
+        }
+      ],
+      reasons: [
+        `Moderate bearish outlook with ${(confidence * 100).toFixed(1)}% confidence`,
+        `Long $${longPutOption.strike} Put: Bid $${longPutOption.bid.toFixed(2)}, Ask $${longPutOption.ask.toFixed(2)}, IV ${(longPutOption.iv * 100).toFixed(1)}%`,
+        `Short $${shortPutOption.strike} Put: Bid $${shortPutOption.bid.toFixed(2)}, Ask $${shortPutOption.ask.toFixed(2)}, IV ${(shortPutOption.iv * 100).toFixed(1)}%`,
+        `Max profit at $${shortPutOption.strike}, Net debit: $${netDebit.toFixed(2)}`
+      ],
       created_at: new Date().toISOString()
     });
   }
