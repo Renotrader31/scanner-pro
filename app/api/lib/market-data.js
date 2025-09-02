@@ -13,7 +13,55 @@ export const STOCK_UNIVERSE = [
   'TWLO', 'OKTA', 'ZS', 'CRWD', 'NET', 'DDOG', 'MDB', 'TEAM', 'NOW', 'WDAY',
   'SPLK', 'PANW', 'FTNT', 'CYBR', 'S', 'BILL', 'DOCN', 'FROG', 'AI', 'C3AI',
   
-  // Add more stocks here...
+  // Biotech & Healthcare
+  'BIIB', 'GILD', 'AMGN', 'REGN', 'VRTX', 'ILMN', 'MRNA', 'BNTX',
+  'BMY', 'ANTM', 'CI', 'CVS', 'HUM', 'CNC', 'WBA',
+  
+  // Financial Services
+  'BAC', 'WFC', 'GS', 'MS', 'C', 'USB', 'PNC', 'TFC', 'COF', 'AXP',
+  'BLK', 'SCHW', 'CB', 'PGR', 'TRV', 'ALL', 'MET', 'PRU', 'AFL', 'AIG',
+  
+  // Energy & Commodities
+  'COP', 'EOG', 'SLB', 'PSX', 'VLO', 'MPC', 'HES', 'DVN',
+  'FANG', 'OXY', 'PXD', 'KMI', 'WMB', 'OKE', 'EPD', 'ET', 'MPLX', 'EQT',
+  
+  // Consumer & Retail
+  'TGT', 'LOW', 'TJX', 'SBUX', 'MCD',
+  'LULU', 'RH', 'ETSY', 'W', 'CHWY', 'CHEWY', 'BBY', 'GPS', 'ANF', 'AEO',
+  
+  // Industrial & Manufacturing
+  'BA', 'CAT', 'DE', 'GE', 'MMM', 'HON', 'UPS', 'FDX', 'LMT', 'RTX',
+  'NOC', 'GD', 'F', 'GM', 'RIVN', 'LCID', 'NIO', 'XPEV', 'LI',
+  
+  // Communications & Media
+  'T', 'TMUS', 'CHTR', 'DISH',
+  'PARA', 'WBD', 'FOXA', 'FOX', 'SIRI', 'SPOT', 'PINS', 'SNAP', 'TWTR', 'MTCH',
+  
+  // REITs & Utilities
+  'AMT', 'PLD', 'CCI', 'EQIX', 'PSA', 'EXR', 'AVB', 'EQR', 'SPG', 'O',
+  'NEE', 'SO', 'DUK', 'D', 'EXC', 'SRE', 'AEP', 'XEL', 'WEC', 'ES',
+  
+  // Semiconductors
+  'QCOM', 'TXN', 'ADI', 'LRCX', 'KLAC', 'AMAT',
+  'MU', 'MCHP', 'MXIM', 'SWKS', 'QRVO', 'MPWR', 'ENTG', 'WOLF', 'CRUS', 'CIRR',
+  
+  // Cloud & Software
+  'ORCL', 'SAP', 'INTU',
+  
+  // Meme & High Beta
+  'GME', 'AMC', 'BBBY', 'MULN', 'ATER', 'SPRT', 'IRNT', 'PROG', 'RDBX', 'REDX',
+  'DWAC', 'PHUN', 'MARK', 'GREE', 'BKKT', 'HOOD', 'SOFI', 'UPST',
+  
+  // ETFs for market context
+  'SPY', 'QQQ', 'IWM', 'VIX', 'UVXY', 'SQQQ', 'TQQQ', 'SPXU', 'SPXL', 'TNA',
+  'TZA', 'FAS', 'FAZ', 'TECL', 'TECS', 'SOXL', 'SOXS', 'LABU', 'LABD', 'CURE',
+  
+  // International & Emerging
+  'BABA', 'TSM', 'ASML', 'TM', 'NVS', 'NESN', 'ROCHE', 'AZN', 'BP',
+  'RDS.A', 'RIO', 'BHP', 'Vale', 'PBR', 'ITUB', 'BBD', 'SAN', 'ING', 'UBS',
+  
+  // Crypto & Fintech
+  'COIN', 'MSTR', 'AFRM', 'LC', 'NU', 'OPEN'
 ];
 
 // Generate realistic market data
