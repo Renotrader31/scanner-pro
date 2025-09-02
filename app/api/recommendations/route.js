@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getRealtimeOptionsChain, findBestOption, calculateSpreadPrices } from '../lib/options-pricing.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -202,18 +203,22 @@ async function generateRecommendations(ticker, marketData, mlAnalysis, accountSi
     });
   }
   
-  // 2. Options Recommendations
+  // 2. Options Recommendations with Real Data
   if (confidence > 0.5) {
-    const iv = Math.random() * 30 + 20; // 20-50% IV
-    const expiryDays = 30;
+    // Fetch real options chain
+    const expiryDays = riskLevel === 'conservative' ? 45 : riskLevel === 'moderate' ? 30 : 14;
+    const optionsChain = await getRealtimeOptionsChain(ticker, expiryDays);
+    const iv = (optionsChain.calls[0]?.iv || 0.25) * 100;
     
-    if (direction === 'BULLISH') {
-      const strike = Math.round(stockPrice * 1.02 * 2) / 2; // Slightly OTM call
-      const premium = stockPrice * 0.03 + Math.random() * stockPrice * 0.04; // 3-7% of stock price
+    if (direction === 'BULLISH' && optionsChain.calls.length > 0) {
+      // Find slightly OTM call
+      const targetStrike = stockPrice * 1.02;
+      const callOption = findBestOption(optionsChain, 'call', targetStrike);
+      const premium = callOption.ask || (stockPrice * 0.03);
       const contracts = Math.max(1, Math.floor((accountSize * params.maxRiskPct) / (premium * 100)));
       
       const maxRisk = contracts * premium * 100;
-      const maxReward = maxRisk * 3;
+      const maxReward = contracts * Math.max(0, (callOption.strike - stockPrice - premium)) * 100;
       
       recommendations.push({
         id: `${ticker}_call_buy_${Date.now()}`,
@@ -224,35 +229,44 @@ async function generateRecommendations(ticker, marketData, mlAnalysis, accountSi
         target_price: premium * 2,
         stop_loss: premium * 0.5,
         position_size: contracts,
-        risk_reward_ratio: 3.0,
+        risk_reward_ratio: maxReward / maxRisk,
         probability_of_profit: confidence * 0.8,
         max_risk: maxRisk,
         max_reward: maxReward,
         time_horizon: `${expiryDays} days`,
         confidence_score: confidence * 0.9,
         ml_rating: rating,
-        strategy_description: `Buy $${strike} calls based on bullish ML prediction`,
+        strategy_description: `Buy ${ticker} $${callOption.strike} Call @ $${premium.toFixed(2)} (Exp: ${callOption.expiration})`,
         risk_level: riskLevel,
         reasons: [
           `ML bullish with ${(confidence * 100).toFixed(1)}% confidence`,
-          `Strike $${strike.toFixed(2)} offers good risk/reward`,
-          `Implied volatility: ${iv.toFixed(1)}%`
+          `Strike $${callOption.strike} • Bid: $${callOption.bid.toFixed(2)} • Ask: $${callOption.ask.toFixed(2)}`,
+          `IV: ${(callOption.iv * 100).toFixed(1)}% • Volume: ${callOption.volume} • OI: ${callOption.openInterest}`,
+          `Delta: ${callOption.delta.toFixed(2)} • Theta: ${callOption.theta.toFixed(3)}`
         ],
-        expiry_date: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        strike_prices: [strike],
+        expiry_date: callOption.expiration,
+        strike_prices: [callOption.strike],
         premium: premium,
-        implied_volatility: iv,
+        implied_volatility: callOption.iv * 100,
+        greeks: {
+          delta: callOption.delta,
+          gamma: callOption.gamma,
+          theta: callOption.theta,
+          vega: callOption.vega
+        },
         created_at: new Date().toISOString()
       });
     }
     
-    if (direction === 'BEARISH') {
-      const strike = Math.round(stockPrice * 0.98 * 2) / 2; // Slightly OTM put
-      const premium = stockPrice * 0.03 + Math.random() * stockPrice * 0.04;
+    if (direction === 'BEARISH' && optionsChain.puts.length > 0) {
+      // Find slightly OTM put
+      const targetStrike = stockPrice * 0.98;
+      const putOption = findBestOption(optionsChain, 'put', targetStrike);
+      const premium = putOption.ask || (stockPrice * 0.03);
       const contracts = Math.max(1, Math.floor((accountSize * params.maxRiskPct) / (premium * 100)));
       
       const maxRisk = contracts * premium * 100;
-      const maxReward = maxRisk * 3;
+      const maxReward = contracts * Math.max(0, (putOption.strike - stockPrice - premium)) * 100;
       
       recommendations.push({
         id: `${ticker}_put_buy_${Date.now()}`,

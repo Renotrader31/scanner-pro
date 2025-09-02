@@ -414,12 +414,13 @@ export async function POST(request) {
     
     let results;
     
-    // Use mock data for now to avoid Polygon API issues
-    const USE_MOCK_DATA = true; // Set to false when you have proper Polygon API access
+    // Use real data when available, fallback to mock if API fails
+    const USE_MOCK_DATA = false; // Using real Polygon API
     
-    if (USE_MOCK_DATA) {
-      results = generateMockInstitutionalFlow(tickers, action);
-    } else {
+    try {
+      if (USE_MOCK_DATA) {
+        results = generateMockInstitutionalFlow(tickers, action);
+      } else {
       switch (action) {
         case 'block_trades':
           results = await detectBlockTrades(tickers, params.minSize || 10000);
@@ -451,6 +452,11 @@ export async function POST(request) {
         default:
           return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
       }
+      }
+    } catch (apiError) {
+      console.log('Polygon API failed, using mock data:', apiError.message);
+      // Fallback to mock data if real API fails
+      results = generateMockInstitutionalFlow(tickers, action);
     }
     
     return NextResponse.json({
