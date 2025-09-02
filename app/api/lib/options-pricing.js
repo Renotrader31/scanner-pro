@@ -36,13 +36,21 @@ export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
       return generateSyntheticOptionsChain(ticker, stockPrice, expDateString);
     }
 
-    // Get option tickers for snapshot
-    const optionTickers = contractsData.results.slice(0, 50).map(c => c.ticker).join(',');
+    // Fetch individual snapshots for each contract (bulk API doesn't work as expected)
+    const snapshotPromises = contractsData.results.slice(0, 20).map(async (contract) => {
+      try {
+        const snapshotUrl = `https://api.polygon.io/v3/snapshot/options/${ticker}/${contract.ticker}?apikey=${POLYGON_API_KEY}`;
+        const response = await fetch(snapshotUrl);
+        const data = await response.json();
+        return data.results;
+      } catch (error) {
+        console.log(`Failed to fetch ${contract.ticker}:`, error.message);
+        return null;
+      }
+    });
     
-    // Fetch real-time quotes
-    const snapshotUrl = `https://api.polygon.io/v3/snapshot/options/${optionTickers}?apikey=${POLYGON_API_KEY}`;
-    const snapshotResponse = await fetch(snapshotUrl);
-    const snapshotData = await snapshotResponse.json();
+    const snapshots = await Promise.all(snapshotPromises);
+    const snapshotData = { results: snapshots.filter(s => s !== null) };
 
     // Process and organize data
     const options = {
@@ -53,17 +61,23 @@ export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
     };
 
     if (snapshotData.results) {
-      snapshotData.results.forEach(snapshot => {
+      // Handle both array and single result formats
+      const resultsArray = Array.isArray(snapshotData.results) ? snapshotData.results : [snapshotData.results];
+      
+      resultsArray.forEach(snapshot => {
         const details = snapshot.details || {};
-        const quote = snapshot.last_quote || {};
         const greeks = snapshot.greeks || {};
         const day = snapshot.day || {};
         
+        // Use day.close as the price, estimate bid/ask spread
+        const lastPrice = day.close || 1.0;
+        const spread = lastPrice * 0.05; // 5% spread estimate
+        
         const optionData = {
           strike: details.strike_price,
-          bid: quote.bid || 0,
-          ask: quote.ask || 0,
-          last: day.close || quote.last || ((quote.bid + quote.ask) / 2),
+          bid: lastPrice - spread/2,
+          ask: lastPrice + spread/2,
+          last: lastPrice,
           volume: day.volume || 0,
           openInterest: snapshot.open_interest || 0,
           iv: snapshot.implied_volatility || 0.25,
