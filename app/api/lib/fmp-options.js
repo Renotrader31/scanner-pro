@@ -1,5 +1,12 @@
 // FMP (Financial Modeling Prep) options data integration
-const FMP_API_KEY = process.env.FMP_API_KEY || 'your_fmp_key_here';
+const FMP_API_KEY = process.env.FMP_API_KEY || process.env.NEXT_PUBLIC_FMP_API_KEY || 'your_fmp_key_here';
+
+// Log if FMP key is available (without exposing the actual key)
+if (FMP_API_KEY && FMP_API_KEY !== 'your_fmp_key_here') {
+  console.log('FMP API key detected, real bid/ask data will be available');
+} else {
+  console.log('FMP API key not configured, using estimated bid/ask spreads');
+}
 
 // Get real-time quote with bid/ask from FMP
 export async function getFMPQuote(ticker) {
