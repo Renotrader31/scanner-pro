@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getMarketSnapshot } from '../lib/market-data.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -309,9 +310,8 @@ export async function POST(request) {
       sectors = []
     } = await request.json();
 
-    // Get live market data from our live-data API
-    const liveDataResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/live-data?type=snapshot`);
-    const liveDataResult = await liveDataResponse.json();
+    // Get live market data directly
+    const liveDataResult = getMarketSnapshot();
     
     if (!liveDataResult.success) {
       throw new Error('Failed to fetch live market data');

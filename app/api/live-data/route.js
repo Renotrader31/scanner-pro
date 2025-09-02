@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
+import { STOCK_UNIVERSE, generateMarketData } from '../lib/market-data.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -195,13 +196,12 @@ export async function GET(request) {
     }
     
     if (type === 'snapshot') {
-      const marketData = generateLiveMarketData();
-      const dataArray = Array.from(marketData.values());
+      const marketData = generateMarketData();
       
       return NextResponse.json({
         success: true,
-        data: dataArray,
-        totalStocks: dataArray.length,
+        data: marketData,
+        totalStocks: marketData.length,
         timestamp: Date.now(),
         marketStatus: getMarketStatus()
       });
