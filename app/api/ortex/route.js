@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const ORTEX_API_KEY = process.env.ORTEX_API_KEY || 'Q0VpvWFI.wPuSEG6CNr7uoRZbtFcmVeeXpoJvjz75';
+
 // Enhanced short interest data with more realistic patterns
 const getShortInterestData = (ticker) => {
   const upperTicker = ticker?.toUpperCase();

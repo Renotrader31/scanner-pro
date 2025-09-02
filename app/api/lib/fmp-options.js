@@ -1,5 +1,5 @@
 // FMP (Financial Modeling Prep) options data integration
-const FMP_API_KEY = process.env.FMP_API_KEY || process.env.NEXT_PUBLIC_FMP_API_KEY || 'your_fmp_key_here';
+const FMP_API_KEY = process.env.FMP_API_KEY || 'm2XfxOS0sZxs6hLEY5yRzUgDyp5Dur4V';
 
 // Log if FMP key is available (without exposing the actual key)
 if (FMP_API_KEY && FMP_API_KEY !== 'your_fmp_key_here') {
