@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { generateMockOptionsFlow } from '../lib/mock-institutional-data.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -245,40 +246,66 @@ export async function POST(request) {
     
     let results;
     
-    switch (action) {
-      case 'unusual_activity':
-        results = await getUnusualOptionsActivity(tickers);
-        break;
-        
-      case 'options_flow':
-        results = await getOptionsFlow(tickers, params.minSize || 100);
-        break;
-        
-      case 'greeks':
-        if (tickers.length > 0) {
-          results = await getOptionsGreeks(tickers[0]);
-        } else {
-          results = [];
-        }
-        break;
-        
-      case 'options_chain':
-        if (tickers.length > 0) {
-          const contracts = await getOptionsContracts(tickers[0], params.expiration);
-          const optionTickers = (contracts.results || []).slice(0, 100).map(c => c.ticker);
-          const snapshots = await getOptionsSnapshots(optionTickers);
-          
+    // Use mock data for now to avoid Polygon API issues
+    const USE_MOCK_DATA = true; // Set to false when you have proper Polygon API access
+    
+    if (USE_MOCK_DATA) {
+      // Generate mock data based on action
+      switch (action) {
+        case 'unusual_activity':
+          results = generateMockOptionsFlow(tickers, 'unusual_activity');
+          break;
+        case 'options_flow':
+          results = generateMockOptionsFlow(tickers, 'large_trades');
+          break;
+        case 'greeks':
+          results = generateMockOptionsFlow(tickers.slice(0, 1), 'unusual_activity');
+          break;
+        case 'options_chain':
           results = {
-            contracts: contracts.results || [],
-            snapshots: snapshots.results || []
+            contracts: generateMockOptionsFlow(tickers.slice(0, 1), 'unusual_activity'),
+            snapshots: generateMockOptionsFlow(tickers.slice(0, 1), 'large_trades')
           };
-        } else {
-          results = { contracts: [], snapshots: [] };
-        }
-        break;
-        
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+          break;
+        default:
+          results = generateMockOptionsFlow(tickers, 'unusual_activity');
+      }
+    } else {
+      switch (action) {
+        case 'unusual_activity':
+          results = await getUnusualOptionsActivity(tickers);
+          break;
+          
+        case 'options_flow':
+          results = await getOptionsFlow(tickers, params.minSize || 100);
+          break;
+          
+        case 'greeks':
+          if (tickers.length > 0) {
+            results = await getOptionsGreeks(tickers[0]);
+          } else {
+            results = [];
+          }
+          break;
+          
+        case 'options_chain':
+          if (tickers.length > 0) {
+            const contracts = await getOptionsContracts(tickers[0], params.expiration);
+            const optionTickers = (contracts.results || []).slice(0, 100).map(c => c.ticker);
+            const snapshots = await getOptionsSnapshots(optionTickers);
+            
+            results = {
+              contracts: contracts.results || [],
+              snapshots: snapshots.results || []
+            };
+          } else {
+            results = { contracts: [], snapshots: [] };
+          }
+          break;
+          
+        default:
+          return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+      }
     }
     
     return NextResponse.json({

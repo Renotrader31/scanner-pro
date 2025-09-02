@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { generateMockInstitutionalFlow } from '../lib/mock-institutional-data.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -413,36 +414,43 @@ export async function POST(request) {
     
     let results;
     
-    switch (action) {
-      case 'block_trades':
-        results = await detectBlockTrades(tickers, params.minSize || 10000);
-        break;
-        
-      case 'dark_pool_analysis':
-        results = await analyzeDarkPoolActivity(tickers);
-        break;
-        
-      case 'smart_money_flow':
-        results = await detectSmartMoneyFlow(tickers);
-        break;
-        
-      case 'comprehensive':
-        // Get all institutional flow data
-        const [blockTrades, darkPool, smartMoney] = await Promise.allSettled([
-          detectBlockTrades(tickers, params.minSize || 25000),
-          analyzeDarkPoolActivity(tickers),
-          detectSmartMoneyFlow(tickers)
-        ]);
-        
-        results = {
-          blockTrades: blockTrades.status === 'fulfilled' ? blockTrades.value : [],
-          darkPoolAnalysis: darkPool.status === 'fulfilled' ? darkPool.value : [],
-          smartMoneyFlow: smartMoney.status === 'fulfilled' ? smartMoney.value : []
-        };
-        break;
-        
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    // Use mock data for now to avoid Polygon API issues
+    const USE_MOCK_DATA = true; // Set to false when you have proper Polygon API access
+    
+    if (USE_MOCK_DATA) {
+      results = generateMockInstitutionalFlow(tickers, action);
+    } else {
+      switch (action) {
+        case 'block_trades':
+          results = await detectBlockTrades(tickers, params.minSize || 10000);
+          break;
+          
+        case 'dark_pool_analysis':
+          results = await analyzeDarkPoolActivity(tickers);
+          break;
+          
+        case 'smart_money_flow':
+          results = await detectSmartMoneyFlow(tickers);
+          break;
+          
+        case 'comprehensive':
+          // Get all institutional flow data
+          const [blockTrades, darkPool, smartMoney] = await Promise.allSettled([
+            detectBlockTrades(tickers, params.minSize || 25000),
+            analyzeDarkPoolActivity(tickers),
+            detectSmartMoneyFlow(tickers)
+          ]);
+          
+          results = {
+            blockTrades: blockTrades.status === 'fulfilled' ? blockTrades.value : [],
+            darkPoolAnalysis: darkPool.status === 'fulfilled' ? darkPool.value : [],
+            smartMoneyFlow: smartMoney.status === 'fulfilled' ? smartMoney.value : []
+          };
+          break;
+          
+        default:
+          return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+      }
     }
     
     return NextResponse.json({
