@@ -44,37 +44,31 @@ export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
       return strike >= stockPrice * 0.9 && strike <= stockPrice * 1.1;
     }).slice(0, 30); // Get up to 30 near-the-money contracts
 
-    // Use bulk snapshot endpoint for better performance with paid API
-    const optionTickers = nearMoneyContracts.map(c => c.ticker).join(',');
-    
+    // Fetch individual snapshots (bulk endpoint doesn't work for options)
     let snapshotData = { results: [] };
     
-    if (optionTickers) {
+    if (nearMoneyContracts.length > 0) {
       try {
-        // Try bulk endpoint first (works with paid API)
-        const bulkSnapshotUrl = `https://api.polygon.io/v3/snapshot?ticker.any_of=${optionTickers}&apikey=${POLYGON_API_KEY}`;
-        const bulkResponse = await fetch(bulkSnapshotUrl);
-        const bulkData = await bulkResponse.json();
-        
-        if (bulkData.results && bulkData.results.length > 0) {
-          snapshotData = bulkData;
-        } else {
-          // Fallback to individual snapshots if bulk fails
-          const snapshotPromises = nearMoneyContracts.slice(0, 20).map(async (contract) => {
-            try {
-              const snapshotUrl = `https://api.polygon.io/v3/snapshot/options/${ticker}/${contract.ticker}?apikey=${POLYGON_API_KEY}`;
-              const response = await fetch(snapshotUrl);
-              const data = await response.json();
+        const snapshotPromises = nearMoneyContracts.slice(0, 20).map(async (contract) => {
+          try {
+            const snapshotUrl = `https://api.polygon.io/v3/snapshot/options/${ticker}/${contract.ticker}?apikey=${POLYGON_API_KEY}`;
+            const response = await fetch(snapshotUrl);
+            const data = await response.json();
+            
+            if (data.status === 'OK' && data.results) {
               return data.results;
-            } catch (error) {
-              console.log(`Failed to fetch ${contract.ticker}:`, error.message);
-              return null;
             }
-          });
-          
-          const snapshots = await Promise.all(snapshotPromises);
-          snapshotData = { results: snapshots.filter(s => s !== null) };
-        }
+            return null;
+          } catch (error) {
+            console.log(`Failed to fetch ${contract.ticker}:`, error.message);
+            return null;
+          }
+        });
+        
+        const snapshots = await Promise.all(snapshotPromises);
+        snapshotData = { results: snapshots.filter(s => s !== null) };
+        
+        console.log(`Fetched ${snapshotData.results.length} option snapshots for ${ticker}`);
       } catch (error) {
         console.error('Snapshot fetch error:', error);
       }
