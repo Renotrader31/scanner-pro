@@ -44,11 +44,11 @@ const MassScanner = () => {
       } else {
         // Set default criteria if API fails
         setScanCriteria([
+          { id: 'ALL', name: 'All Stocks', description: 'Show all stocks without criteria filtering' },
           { id: 'TOP_GAINERS', name: 'Top Gainers', description: 'Stocks with any positive movement' },
           { id: 'TOP_LOSERS', name: 'Top Losers', description: 'Stocks with negative movement' },
           { id: 'HIGH_VOLUME', name: 'High Volume', description: 'Stocks with above-average volume activity' },
           { id: 'MODERATE_MOVERS', name: 'Moderate Movers', description: 'Stocks with moderate price movement (0.5%+)' },
-          { id: 'ALL_STOCKS', name: 'All Stocks', description: 'Show all stocks for testing - minimal filtering' },
           { id: 'MOMENTUM_BREAKOUT', name: 'Momentum Breakout', description: 'Stocks breaking above 20-day MA with high volume' },
           { id: 'OVERSOLD_BOUNCE', name: 'Oversold Bounce', description: 'Oversold stocks showing early reversal signs' }
         ]);
@@ -96,8 +96,8 @@ const MassScanner = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scanType: selectedScan,
-          filters,
+          criteria: selectedScan,  // Use 'criteria' as the API expects
+          scanType: selectedScan,  // Keep for backwards compatibility
           sortBy: sortConfig.sortBy,
           sortOrder: sortConfig.sortOrder,
           limit: 100,
@@ -107,17 +107,22 @@ const MassScanner = () => {
 
       const data = await response.json();
       if (data.success) {
-        setScanResults(data.results);
-        setSummary(data.summary);
-        setTotalScanned(data.summary.totalScanned);
-        console.log(`Scan completed: ${data.results.length} results found from ${data.summary.totalScanned} stocks`);
+        setScanResults(data.results || []);
+        setSummary(data.summary || {});
+        setTotalScanned(data.summary?.totalScanned || 0);
+        console.log(`Scan completed: ${data.results?.length || 0} results found from ${data.summary?.totalScanned || 0} stocks`);
       } else {
         console.error('Scan failed:', data.error);
+        // Show error to user
+        alert(`Scan failed: ${data.error || 'Unknown error'}`);
         setScanResults([]);
         setSummary({ totalScanned: 0, totalFiltered: 0, totalReturned: 0 });
       }
     } catch (error) {
       console.error('Error performing scan:', error);
+      alert(`Error performing scan: ${error.message}`);
+      setScanResults([]);
+      setSummary({ totalScanned: 0, totalFiltered: 0, totalReturned: 0 });
     }
     setLoading(false);
   };
