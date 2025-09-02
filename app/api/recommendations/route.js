@@ -203,12 +203,21 @@ async function generateRecommendations(ticker, marketData, mlAnalysis, accountSi
     });
   }
   
+  // Fetch real options chain for all strategies (moved outside condition)
+  const expiryDays = riskLevel === 'conservative' ? 45 : riskLevel === 'moderate' ? 30 : 14;
+  let optionsChain = { calls: [], puts: [] };
+  
+  try {
+    optionsChain = await getRealtimeOptionsChain(ticker, expiryDays);
+  } catch (error) {
+    console.log('Options chain fetch error:', error.message);
+    // Use empty chain as fallback
+  }
+  
+  const iv = (optionsChain.calls[0]?.iv || 0.25) * 100;
+  
   // 2. Options Recommendations with Real Data
-  if (confidence > 0.5) {
-    // Fetch real options chain
-    const expiryDays = riskLevel === 'conservative' ? 45 : riskLevel === 'moderate' ? 30 : 14;
-    const optionsChain = await getRealtimeOptionsChain(ticker, expiryDays);
-    const iv = (optionsChain.calls[0]?.iv || 0.25) * 100;
+  if (confidence > 0.5 && optionsChain.calls.length > 0) {
     
     if (direction === 'BULLISH' && optionsChain.calls.length > 0) {
       // Find slightly OTM call
