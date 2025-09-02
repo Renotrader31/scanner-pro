@@ -317,8 +317,14 @@ export async function POST(request) {
       throw new Error('Failed to fetch live market data');
     }
 
+    // Map symbol to ticker for compatibility
+    const mappedData = liveDataResult.data.map(stock => ({
+      ...stock,
+      ticker: stock.symbol  // Add ticker field from symbol
+    }));
+
     // Enrich all stocks with technical and fundamental data
-    const enrichedStocks = liveDataResult.data.map(enrichStockData);
+    const enrichedStocks = mappedData.map(enrichStockData);
     
     // Apply base filters
     let filteredStocks = enrichedStocks.filter(stock => {
@@ -331,7 +337,9 @@ export async function POST(request) {
 
     // Apply screening criteria
     const criteria = SCREENING_CRITERIA[scanType];
-    if (criteria && criteria.criteria) {
+    if (scanType === 'ALL') {
+      // Don't apply any additional filtering for ALL
+    } else if (criteria && criteria.criteria) {
       filteredStocks = filteredStocks.filter(criteria.criteria);
     }
 
