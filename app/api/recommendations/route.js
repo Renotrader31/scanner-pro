@@ -511,6 +511,7 @@ async function generateRecommendations(ticker, marketData, mlAnalysis, accountSi
   }
 
   // Strategy 6: Bull Call Spread (Moderate Bullish) with Real Options
+  console.log(`Bull Call Spread check: direction=${direction}, confidence=${confidence}, calls=${optionsChain.calls.length}`);
   if (direction === 'BULLISH' && confidence >= 0.6 && confidence <= 0.8 && optionsChain.calls.length > 0) {
     // Find real strikes for bull call spread
     const longCallOption = findBestOption(optionsChain, 'call', stockPrice); // ATM call to buy
