@@ -209,6 +209,7 @@ async function generateRecommendations(ticker, marketData, mlAnalysis, accountSi
   
   try {
     optionsChain = await getRealtimeOptionsChain(ticker, expiryDays);
+    console.log(`Options chain fetched for ${ticker}: ${optionsChain.calls.length} calls, ${optionsChain.puts.length} puts`);
   } catch (error) {
     console.log('Options chain fetch error:', error.message);
     // Use empty chain as fallback
