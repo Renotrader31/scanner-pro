@@ -7,12 +7,60 @@ const CACHE_DURATION = 60000; // 1 minute cache
 
 export async function getRealMarketData(symbols = null) {
   try {
-    // If no symbols provided, get top movers
+    // Special case: if no symbols, get FULL market snapshot
     if (!symbols) {
-      symbols = await getTopMovers();
+      console.log('Fetching full market snapshot...');
+      
+      // Check if we have cached full market data
+      const cachedFullMarket = cache.get('FULL_MARKET');
+      if (cachedFullMarket && (Date.now() - cachedFullMarket.timestamp) < CACHE_DURATION) {
+        console.log(`Using cached market data: ${cachedFullMarket.data.length} stocks`);
+        return cachedFullMarket.data;
+      }
+      
+      // Fetch ALL stocks from Polygon
+      const snapshotUrl = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?apikey=${POLYGON_API_KEY}`;
+      const response = await fetch(snapshotUrl);
+      const data = await response.json();
+      
+      if (data.tickers && data.tickers.length > 0) {
+        const allStocks = data.tickers
+          .filter(ticker => 
+            ticker.day?.v > 50000 && // Min volume 50k
+            ticker.day?.c > 0.5 &&    // Min price $0.50
+            ticker.day?.c < 50000     // Max price $50k (remove bad data)
+          )
+          .map(ticker => ({
+            symbol: ticker.ticker,
+            price: ticker.day?.c || ticker.prevDay?.c || 0,
+            change: ticker.todaysChange || 0,
+            changePercent: ticker.todaysChangePerc || 0,
+            volume: ticker.day?.v || 0,
+            bid: ticker.lastQuote?.p || ticker.day?.c || 0,
+            ask: ticker.lastQuote?.P || ticker.day?.c || 0,
+            dayHigh: ticker.day?.h || 0,
+            dayLow: ticker.day?.l || 0,
+            open: ticker.day?.o || 0,
+            previousClose: ticker.prevDay?.c || 0,
+            marketCap: ticker.marketCap || 0,
+            avgVolume: ticker.prevDay?.v || ticker.day?.v || 0,
+            week52High: ticker.week52High || 0,
+            week52Low: ticker.week52Low || 0,
+            timestamp: new Date().toISOString()
+          }));
+        
+        // Cache the full market data
+        cache.set('FULL_MARKET', {
+          data: allStocks,
+          timestamp: Date.now()
+        });
+        
+        console.log(`Fetched ${allStocks.length} stocks from Polygon`);
+        return allStocks;
+      }
     }
     
-    // Check cache first
+    // Original logic for specific symbols
     const now = Date.now();
     const cachedData = [];
     const symbolsToFetch = [];
@@ -29,7 +77,7 @@ export async function getRealMarketData(symbols = null) {
     // Fetch fresh data for uncached symbols
     const freshData = [];
     if (symbolsToFetch.length > 0) {
-      // Batch fetch snapshots for all tickers
+      // Batch fetch snapshots for specific tickers
       const snapshotUrl = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${symbolsToFetch.join(',')}&apikey=${POLYGON_API_KEY}`;
       
       try {
@@ -86,24 +134,53 @@ export async function getRealMarketData(symbols = null) {
   }
 }
 
-// Get top movers from Polygon
+// Get top movers from Polygon - EXPANDED to get ALL stocks
 async function getTopMovers() {
   try {
+    // Get ALL stocks snapshot - this returns thousands of stocks!
+    console.log('Fetching full market snapshot from Polygon...');
     const response = await fetch(
-      `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/gainers?apikey=${POLYGON_API_KEY}`
+      `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?apikey=${POLYGON_API_KEY}`
     );
     const data = await response.json();
     
-    const gainers = data.tickers?.slice(0, 50).map(t => t.ticker) || [];
+    if (data.tickers && data.tickers.length > 0) {
+      console.log(`Fetched ${data.tickers.length} stocks from Polygon`);
+      
+      // Filter for liquid stocks (volume > 100k, price > $1)
+      const liquidStocks = data.tickers.filter(t => 
+        t.day?.v > 100000 && 
+        t.day?.c > 1 &&
+        t.day?.c < 10000 // Remove outliers
+      );
+      
+      // Sort by volume to get most active stocks first
+      liquidStocks.sort((a, b) => (b.day?.v || 0) - (a.day?.v || 0));
+      
+      // Map to ticker symbols
+      const symbols = liquidStocks.map(t => t.ticker);
+      
+      console.log(`Filtered to ${symbols.length} liquid stocks`);
+      
+      // Return up to 1000 most active stocks
+      return symbols.slice(0, 1000);
+    }
     
-    // Also get losers
-    const losersResponse = await fetch(
+    // Fallback: get gainers + losers if full snapshot fails
+    console.log('Falling back to gainers/losers approach...');
+    const gainersRes = await fetch(
+      `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/gainers?apikey=${POLYGON_API_KEY}`
+    );
+    const gainersData = await gainersRes.json();
+    const gainers = gainersData.tickers?.slice(0, 100).map(t => t.ticker) || [];
+    
+    const losersRes = await fetch(
       `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/losers?apikey=${POLYGON_API_KEY}`
     );
-    const losersData = await losersResponse.json();
-    const losers = losersData.tickers?.slice(0, 50).map(t => t.ticker) || [];
+    const losersData = await losersRes.json();
+    const losers = losersData.tickers?.slice(0, 100).map(t => t.ticker) || [];
     
-    // Combine and add some popular stocks
+    // Combine all
     const allSymbols = [
       ...new Set([
         ...gainers,
@@ -112,7 +189,7 @@ async function getTopMovers() {
       ])
     ];
     
-    return allSymbols.slice(0, 200); // Limit to 200 symbols
+    return allSymbols.slice(0, 500); // Return up to 500 symbols
     
   } catch (error) {
     console.error('Error fetching top movers:', error);
