@@ -16,6 +16,8 @@ export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
       expirationDate.setDate(expirationDate.getDate() + 1);
     }
     const expDateString = expirationDate.toISOString().split('T')[0];
+    
+    console.log(`Fetching options for ${ticker} with expiration around ${expDateString}`);
 
     // Fetch current stock price
     const stockResponse = await fetch(
@@ -36,21 +38,47 @@ export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
       return generateSyntheticOptionsChain(ticker, stockPrice, expDateString);
     }
 
-    // Fetch individual snapshots for each contract (bulk API doesn't work as expected)
-    const snapshotPromises = contractsData.results.slice(0, 20).map(async (contract) => {
-      try {
-        const snapshotUrl = `https://api.polygon.io/v3/snapshot/options/${ticker}/${contract.ticker}?apikey=${POLYGON_API_KEY}`;
-        const response = await fetch(snapshotUrl);
-        const data = await response.json();
-        return data.results;
-      } catch (error) {
-        console.log(`Failed to fetch ${contract.ticker}:`, error.message);
-        return null;
-      }
-    });
+    // Filter contracts near the money (within 10% of stock price)
+    const nearMoneyContracts = contractsData.results.filter(c => {
+      const strike = c.strike_price;
+      return strike >= stockPrice * 0.9 && strike <= stockPrice * 1.1;
+    }).slice(0, 30); // Get up to 30 near-the-money contracts
+
+    // Use bulk snapshot endpoint for better performance with paid API
+    const optionTickers = nearMoneyContracts.map(c => c.ticker).join(',');
     
-    const snapshots = await Promise.all(snapshotPromises);
-    const snapshotData = { results: snapshots.filter(s => s !== null) };
+    let snapshotData = { results: [] };
+    
+    if (optionTickers) {
+      try {
+        // Try bulk endpoint first (works with paid API)
+        const bulkSnapshotUrl = `https://api.polygon.io/v3/snapshot?ticker.any_of=${optionTickers}&apikey=${POLYGON_API_KEY}`;
+        const bulkResponse = await fetch(bulkSnapshotUrl);
+        const bulkData = await bulkResponse.json();
+        
+        if (bulkData.results && bulkData.results.length > 0) {
+          snapshotData = bulkData;
+        } else {
+          // Fallback to individual snapshots if bulk fails
+          const snapshotPromises = nearMoneyContracts.slice(0, 20).map(async (contract) => {
+            try {
+              const snapshotUrl = `https://api.polygon.io/v3/snapshot/options/${ticker}/${contract.ticker}?apikey=${POLYGON_API_KEY}`;
+              const response = await fetch(snapshotUrl);
+              const data = await response.json();
+              return data.results;
+            } catch (error) {
+              console.log(`Failed to fetch ${contract.ticker}:`, error.message);
+              return null;
+            }
+          });
+          
+          const snapshots = await Promise.all(snapshotPromises);
+          snapshotData = { results: snapshots.filter(s => s !== null) };
+        }
+      } catch (error) {
+        console.error('Snapshot fetch error:', error);
+      }
+    }
 
     // Process and organize data
     const options = {
@@ -69,13 +97,15 @@ export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
         const greeks = snapshot.greeks || {};
         const day = snapshot.day || {};
         
-        // Use day.close as the price, estimate bid/ask spread
+        // For paid API, we have day data and Greeks but need to estimate bid/ask
+        // Use a tighter spread for liquid options
         const lastPrice = day.close || 1.0;
-        const spread = lastPrice * 0.05; // 5% spread estimate
+        const ivSpread = Math.min(0.1, Math.max(0.02, snapshot.implied_volatility || 0.25)); // 2-10% spread based on IV
+        const spread = lastPrice * ivSpread;
         
         const optionData = {
           strike: details.strike_price,
-          bid: lastPrice - spread/2,
+          bid: Math.max(0.01, lastPrice - spread/2),
           ask: lastPrice + spread/2,
           last: lastPrice,
           volume: day.volume || 0,
@@ -85,7 +115,13 @@ export async function getRealtimeOptionsChain(ticker, expiryDays = 30) {
           gamma: greeks.gamma || 0,
           theta: greeks.theta || 0,
           vega: greeks.vega || 0,
-          expiration: details.expiration_date
+          expiration: details.expiration_date,
+          // Additional day data from paid API
+          dayHigh: day.high || 0,
+          dayLow: day.low || 0,
+          dayOpen: day.open || 0,
+          dayChange: day.change || 0,
+          vwap: day.vwap || 0
         };
 
         if (details.contract_type === 'call') {
@@ -199,6 +235,53 @@ function calculateDelta(stock, strike, time, iv, type) {
     if (moneyness > 1.1) return -0.1;
     if (moneyness < 0.9) return -0.9;
     return -0.5 + (moneyness - 1) * 2;
+  }
+}
+
+// Fetch real-time quote for a specific option contract (paid API feature)
+export async function getOptionQuote(optionTicker) {
+  try {
+    const quoteUrl = `https://api.polygon.io/v3/quotes/${optionTicker}?limit=1&order=desc&apikey=${POLYGON_API_KEY}`;
+    const response = await fetch(quoteUrl);
+    const data = await response.json();
+    
+    if (data.results && data.results.length > 0) {
+      const quote = data.results[0];
+      return {
+        bid: quote.bid_price || 0,
+        ask: quote.ask_price || 0,
+        bidSize: quote.bid_size || 0,
+        askSize: quote.ask_size || 0,
+        timestamp: quote.participant_timestamp
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching option quote:', error);
+    return null;
+  }
+}
+
+// Fetch last trade for a specific option contract (paid API feature)
+export async function getOptionLastTrade(optionTicker) {
+  try {
+    const tradeUrl = `https://api.polygon.io/v3/trades/${optionTicker}?limit=1&order=desc&apikey=${POLYGON_API_KEY}`;
+    const response = await fetch(tradeUrl);
+    const data = await response.json();
+    
+    if (data.results && data.results.length > 0) {
+      const trade = data.results[0];
+      return {
+        price: trade.price || 0,
+        size: trade.size || 0,
+        timestamp: trade.participant_timestamp,
+        exchange: trade.exchange
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching last trade:', error);
+    return null;
   }
 }
 
