@@ -1,0 +1,20 @@
+{
+  "trades": [
+    {
+      "ticker": "IREN",
+      "trade_type": "call_buy",
+      "direction": "BULLISH",
+      "entry_price": 3.95,
+      "position_size": 2,
+      "target_price": 5,
+      "stop_loss": 2.95,
+      "confidence_score": 0.7,
+      "ml_predictions": {},
+      "trade_id": "trade_1756908325037_it243hwuz",
+      "entry_date": "2025-09-03T14:05:25.037Z",
+      "status": "ACTIVE",
+      "source": "AI_RECOMMENDATION"
+    }
+  ],
+  "lastUpdate": 1756908325037
+}
