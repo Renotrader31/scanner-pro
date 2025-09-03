@@ -629,8 +629,8 @@ const MLTradingSystem = () => {
 
       {/* Enhanced Trade Entry Modal */}
       {showTradeModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-600 w-full max-w-4xl flex flex-col" style={{ maxHeight: '85vh' }}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl border border-gray-600 w-full max-w-4xl flex flex-col my-8" style={{ maxHeight: '90vh' }}>
             <div className="p-6 border-b border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -646,7 +646,7 @@ const MLTradingSystem = () => {
               </div>
             </div>
 
-            <div className="p-6 space-y-6 overflow-y-auto flex-1">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(90vh - 200px)' }}>
               {/* Basic Trade Info */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -800,7 +800,7 @@ const MLTradingSystem = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-gray-700 flex gap-3 bg-gray-800 rounded-b-2xl sticky bottom-0">
+            <div className="p-6 border-t border-gray-700 flex gap-3 bg-gray-800 rounded-b-2xl flex-shrink-0">
               <button
                 onClick={() => setShowTradeModal(false)}
                 className="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors font-medium"
