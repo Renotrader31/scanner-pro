@@ -98,6 +98,15 @@ const TradingManager = () => {
   };
 
   const submitTrade = async () => {
+    console.log('submitTrade called in TradingManager');
+    console.log('Trade data:', newTrade);
+    
+    // Validate required fields
+    if (!newTrade.ticker || !newTrade.entry_price || !newTrade.position_size) {
+      alert('Please fill in all required fields: Ticker, Entry Price, and Position Size');
+      return;
+    }
+    
     try {
       const tradeData = {
         action: 'submit_advanced_trade',
@@ -122,10 +131,15 @@ const TradingManager = () => {
       });
 
       const data = await response.json();
+      console.log('Trade submission response:', data);
+      
       if (data.success) {
+        alert('Trade successfully entered!');
         setShowTradeModal(false);
         resetTradeForm();
         fetchActiveTrades();
+      } else {
+        alert(`Failed to enter trade: ${data.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error submitting trade:', error);
@@ -370,7 +384,7 @@ const TradingManager = () => {
       {/* Enhanced Trade Entry Modal */}
       {showTradeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-600 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl border border-gray-600 w-full max-w-4xl flex flex-col" style={{ maxHeight: '85vh' }}>
             <div className="p-6 border-b border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -386,7 +400,7 @@ const TradingManager = () => {
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
               {/* Basic Trade Info */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -686,16 +700,23 @@ const TradingManager = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-gray-700 flex gap-3">
+            <div className="p-6 border-t border-gray-700 flex gap-3 bg-gray-800 rounded-b-2xl sticky bottom-0">
               <button
                 onClick={() => setShowTradeModal(false)}
                 className="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors font-medium"
+                type="button"
               >
                 Cancel
               </button>
               <button
-                onClick={submitTrade}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 rounded-lg transition-all font-bold"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Enter Trade clicked');
+                  submitTrade();
+                }}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 rounded-lg transition-all font-bold cursor-pointer"
+                type="button"
               >
                 Enter Trade
               </button>

@@ -97,6 +97,15 @@ const TradeFeedback = () => {
   };
 
   const submitTrade = async () => {
+    console.log('submitTrade called in ML TradeFeedback');
+    console.log('Trade data:', newTrade);
+    
+    // Validate required fields
+    if (!newTrade.ticker || !newTrade.entry_price || !newTrade.position_size) {
+      alert('Please fill in all required fields: Ticker, Entry Price, and Position Size');
+      return;
+    }
+    
     try {
       const response = await fetch('/api/trade-feedback', {
         method: 'POST',
@@ -114,7 +123,10 @@ const TradeFeedback = () => {
       });
 
       const data = await response.json();
+      console.log('ML Trade submission response:', data);
+      
       if (data.success) {
+        alert('Trade successfully logged in ML system!');
         setShowTradeModal(false);
         setNewTrade({
           ticker: '', trade_type: 'stock_long', direction: 'BULLISH',
@@ -123,6 +135,8 @@ const TradeFeedback = () => {
         });
         fetchTrades();
         fetchMLMetrics();
+      } else {
+        alert(`Failed to log trade: ${data.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error submitting trade:', error);
@@ -198,8 +212,14 @@ const TradeFeedback = () => {
           </span>
         </h2>
         <button
-          onClick={() => setShowTradeModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg hover:from-green-600 hover:to-blue-700 transition-all flex items-center gap-2"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Log Trade button clicked');
+            setShowTradeModal(true);
+          }}
+          className="px-4 py-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg hover:from-green-600 hover:to-blue-700 transition-all flex items-center gap-2 cursor-pointer"
+          type="button"
         >
           <Target size={16} />
           Log Trade
@@ -444,8 +464,8 @@ const TradeFeedback = () => {
 
       {/* Trade Modal */}
       {showTradeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700 max-h-[85vh] overflow-y-auto">
             <h3 className="text-xl font-bold mb-4 text-white">Log New Trade</h3>
             
             <div className="space-y-4">
@@ -539,13 +559,20 @@ const TradeFeedback = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowTradeModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded transition-colors"
+                className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded transition-colors cursor-pointer"
+                type="button"
               >
                 Cancel
               </button>
               <button
-                onClick={submitTrade}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Submit Trade clicked in ML');
+                  submitTrade();
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors cursor-pointer"
+                type="button"
               >
                 Log Trade
               </button>
