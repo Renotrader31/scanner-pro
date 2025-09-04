@@ -304,15 +304,41 @@ const MLTradingSystemEnhanced = () => {
       if (result.success) {
         alert(`Trade recorded! ${newTrade.outcome === 'WIN' ? '✅ WIN' : newTrade.outcome === 'LOSS' ? '❌ LOSS' : '⏳ PENDING'} - ML is learning from this trade.`);
         
+        // Add the trade to local state immediately
+        const newTradeRecord = {
+          ...tradeData,
+          trade_id: result.trade_id || `trade_${Date.now()}`,
+          entry_date: new Date().toISOString(),
+          status: newTrade.outcome === 'PENDING' ? 'ACTIVE' : 'CLOSED'
+        };
+        
+        // Update the appropriate list based on outcome
+        if (newTrade.outcome === 'PENDING') {
+          setActiveTrades(prev => [newTradeRecord, ...prev]);
+          setPendingOrders(prev => [newTradeRecord, ...prev]);
+        } else {
+          setClosedTrades(prev => [newTradeRecord, ...prev]);
+        }
+        
+        // Update metrics
+        setMLMetrics(prev => ({
+          ...prev,
+          summary: {
+            ...prev.summary,
+            totalTrades: prev.summary.totalTrades + 1,
+            activeTrades: newTrade.outcome === 'PENDING' ? prev.summary.activeTrades + 1 : prev.summary.activeTrades
+          }
+        }));
+        
         // Reset form
         resetForm();
         setShowTradeModal(false);
         
-        // Refresh data
+        // Still try to refresh from server (but don't rely on it)
         setTimeout(() => {
           fetchAllTrades();
           fetchMLMetrics();
-        }, 500);
+        }, 1000);
         
       } else {
         alert(`Error: ${result.message || result.error || 'Failed to submit trade'}`);
@@ -542,6 +568,82 @@ const MLTradingSystemEnhanced = () => {
         </div>
       )}
 
+      {selectedTab === 'active' && (
+        <div className="bg-gray-800/50 backdrop-blur-md rounded-xl border border-gray-700/50 p-6">
+          <h3 className="text-xl font-bold text-white mb-4">Active Trades</h3>
+          <div className="space-y-2">
+            {activeTrades.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No active trades</p>
+            ) : (
+              activeTrades.map(trade => (
+                <div key={trade.trade_id || trade.id} className="p-4 bg-gray-900/50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="px-2 py-1 rounded text-xs font-bold bg-blue-500/20 text-blue-400">
+                        ACTIVE
+                      </div>
+                      <div>
+                        <span className="font-bold text-white">{trade.symbol}</span>
+                        <span className="ml-2 text-sm text-gray-400">{trade.side}</span>
+                        {trade.instrumentType === 'OPTION' ? (
+                          <span className="ml-2 text-sm text-gray-500">
+                            {trade.optionDetails?.contracts || trade.contracts} contracts @ ${trade.optionDetails?.premium || trade.premium}
+                            (Strike: ${trade.optionDetails?.strike || trade.strike})
+                          </span>
+                        ) : (
+                          <span className="ml-2 text-sm text-gray-500">{trade.quantity} @ ${trade.price}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-400">Entry: {new Date(trade.entry_date || trade.timestamp).toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-500">Target: ${trade.target || 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {selectedTab === 'pending' && (
+        <div className="bg-gray-800/50 backdrop-blur-md rounded-xl border border-gray-700/50 p-6">
+          <h3 className="text-xl font-bold text-white mb-4">Pending Orders</h3>
+          <div className="space-y-2">
+            {pendingOrders.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No pending orders</p>
+            ) : (
+              pendingOrders.map(trade => (
+                <div key={trade.trade_id || trade.id} className="p-4 bg-gray-900/50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="px-2 py-1 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400">
+                        PENDING
+                      </div>
+                      <div>
+                        <span className="font-bold text-white">{trade.symbol}</span>
+                        <span className="ml-2 text-sm text-gray-400">{trade.side}</span>
+                        {trade.instrumentType === 'OPTION' ? (
+                          <span className="ml-2 text-sm text-gray-500">
+                            {trade.optionDetails?.contracts || trade.contracts} contracts @ ${trade.optionDetails?.premium || trade.premium}
+                          </span>
+                        ) : (
+                          <span className="ml-2 text-sm text-gray-500">{trade.quantity} @ ${trade.price}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-400">R/R: {trade.riskReward || 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {selectedTab === 'history' && (
         <div className="bg-gray-800/50 backdrop-blur-md rounded-xl border border-gray-700/50 p-6">
           <h3 className="text-xl font-bold text-white mb-4">Trade History</h3>
@@ -570,6 +672,59 @@ const MLTradingSystemEnhanced = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {selectedTab === 'analytics' && (
+        <div className="bg-gray-800/50 backdrop-blur-md rounded-xl border border-gray-700/50 p-6">
+          <h3 className="text-xl font-bold text-white mb-4">Analytics & ML Performance</h3>
+          
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <div className="text-sm text-gray-400">Total Trades</div>
+              <div className="text-2xl font-bold text-white">{mlMetrics.summary.totalTrades}</div>
+            </div>
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <div className="text-sm text-gray-400">Win Rate</div>
+              <div className="text-2xl font-bold text-green-400">{mlMetrics.summary.winRate}%</div>
+            </div>
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <div className="text-sm text-gray-400">Active Trades</div>
+              <div className="text-2xl font-bold text-blue-400">{activeTrades.length}</div>
+            </div>
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <div className="text-sm text-gray-400">ML Accuracy</div>
+              <div className="text-2xl font-bold text-purple-400">{mlMetrics.summary.avgConfidenceAccuracy}%</div>
+            </div>
+          </div>
+
+          {/* Recent Trades Summary */}
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <h4 className="text-lg font-bold text-white mb-3">Recent Performance</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Wins</span>
+                <span className="text-green-400 font-bold">{closedTrades.filter(t => t.outcome === 'WIN').length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Losses</span>
+                <span className="text-red-400 font-bold">{closedTrades.filter(t => t.outcome === 'LOSS').length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Pending</span>
+                <span className="text-yellow-400 font-bold">{pendingOrders.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Total P/L</span>
+                <span className={`font-bold ${
+                  closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {formatCurrency(closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0))}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}
