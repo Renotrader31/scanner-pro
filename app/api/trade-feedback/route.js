@@ -277,7 +277,8 @@ export async function POST(request) {
   try {
     const { action, ...data } = await request.json();
     
-    if (action === 'submit_trade') {
+    // Handle both legacy and enhanced trade submissions
+    if (action === 'submit_trade' || action === 'ml_enhanced_trade') {
       // User executed a trade based on our recommendation
       const trade = {
         ...data,
@@ -365,7 +366,8 @@ export async function POST(request) {
       });
     }
     
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    console.log('Invalid action received:', action);
+    return NextResponse.json({ error: `Invalid action: ${action}` }, { status: 400 });
     
   } catch (error) {
     console.error('Trade feedback error:', error);
