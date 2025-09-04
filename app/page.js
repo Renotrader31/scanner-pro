@@ -248,23 +248,28 @@ export default function Home() {
                 ticker, 
                 change: change.toFixed(2), 
                 price: r.c,
-              volume: r.v
-            });
+                volume: r.v
+              });
+            }
+          } else {
+            // Silently skip failed API calls
+            console.log(`API temporarily unavailable for ${ticker}`);
           }
-        } else {
-          // Silently skip failed API calls
-          console.log(`API temporarily unavailable for ${ticker}`);
+        } catch (error) {
+          console.log(`Network error for ${ticker}, skipping`);
         }
-      } catch (error) {
-        console.log(`Network error for ${ticker}, skipping`);
       }
-    }
     
-    const sorted = movers.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
-    setTopMovers({
-      gainers: movers.filter(m => m.change > 0).slice(0, 3),
-      losers: movers.filter(m => m.change < 0).slice(0, 3)
-    });
+      const sorted = movers.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+      setTopMovers({
+        gainers: movers.filter(m => m.change > 0).slice(0, 3),
+        losers: movers.filter(m => m.change < 0).slice(0, 3)
+      });
+    } catch (error) {
+      console.log('Error fetching top movers:', error);
+      // Set default empty movers on error
+      setTopMovers({ gainers: [], losers: [] });
+    }
   };
 
   // Helper functions
