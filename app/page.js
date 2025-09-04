@@ -11,7 +11,7 @@ import AlertsPanel from './components/AlertsPanel';
 import MarketHeatmap from './components/MarketHeatmap';
 import AIRecommendations from './components/AIRecommendations';
 import MassScanner from './components/MassScanner';
-import MLTradingSystemV2 from './components/MLTradingSystemV2';
+import MLTradingSystemEnhanced from './components/MLTradingSystemEnhanced';
 import TechnicalDashboard from './components/TechnicalDashboard';
 import InstitutionalFlow from './components/InstitutionalFlow';
 
@@ -612,10 +612,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* ML TRADING SYSTEM - Consolidated ML Learning & Trade Management */}
+        {/* ML TRADING SYSTEM - Enhanced with Quantum Trade AI Features */}
         {(activeTab === 'feedback' || activeTab === 'trading') && (
           <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
-            <MLTradingSystemV2 />
+            <MLTradingSystemEnhanced />
           </div>
         )}
 
