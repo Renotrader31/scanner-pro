@@ -195,12 +195,17 @@ const MLTradingSystemEnhanced = () => {
 
   // Submit trade with enhanced data
   const submitTrade = async () => {
-    // Validation
-    if (!newTrade.symbol || !newTrade.price || 
-        (newTrade.instrumentType === 'STOCK' && !newTrade.quantity) ||
-        (newTrade.instrumentType === 'OPTION' && (!newTrade.contracts || !newTrade.premium))) {
-      alert('Please fill in all required fields');
-      return;
+    // Validation based on instrument type
+    if (newTrade.instrumentType === 'STOCK') {
+      if (!newTrade.symbol || !newTrade.price || !newTrade.quantity) {
+        alert('Please fill in: Symbol, Price, and Quantity');
+        return;
+      }
+    } else if (newTrade.instrumentType === 'OPTION') {
+      if (!newTrade.symbol || !newTrade.contracts || !newTrade.premium || !newTrade.strike || !newTrade.expiry) {
+        alert('Please fill in: Symbol, Strike, Expiry, Contracts, and Premium');
+        return;
+      }
     }
     
     setSubmitting(true);
@@ -216,8 +221,8 @@ const MLTradingSystemEnhanced = () => {
         instrumentType: newTrade.instrumentType,
         
         // Quantities & Prices
-        quantity: newTrade.instrumentType === 'STOCK' ? parseInt(newTrade.quantity) : 0,
-        price: parseFloat(newTrade.price) || 0,
+        quantity: newTrade.instrumentType === 'STOCK' ? parseInt(newTrade.quantity) : parseInt(newTrade.contracts) || 0,
+        price: newTrade.instrumentType === 'STOCK' ? parseFloat(newTrade.price) || 0 : parseFloat(newTrade.premium) || 0,
         total: newTrade.total,
         
         // Options data
