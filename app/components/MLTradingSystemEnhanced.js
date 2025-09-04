@@ -195,6 +195,16 @@ const MLTradingSystemEnhanced = () => {
 
   // Submit trade with enhanced data
   const submitTrade = async () => {
+    // Debug logging
+    console.log('Submitting trade with data:', {
+      instrumentType: newTrade.instrumentType,
+      symbol: newTrade.symbol,
+      strike: newTrade.strike,
+      expiry: newTrade.expiry,
+      contracts: newTrade.contracts,
+      premium: newTrade.premium
+    });
+    
     // Validation based on instrument type
     if (newTrade.instrumentType === 'STOCK') {
       if (!newTrade.symbol || !newTrade.price || !newTrade.quantity) {
@@ -202,8 +212,24 @@ const MLTradingSystemEnhanced = () => {
         return;
       }
     } else if (newTrade.instrumentType === 'OPTION') {
-      if (!newTrade.symbol || !newTrade.contracts || !newTrade.premium || !newTrade.strike || !newTrade.expiry) {
-        alert('Please fill in: Symbol, Strike, Expiry, Contracts, and Premium');
+      // Check each field individually for better debugging
+      const missingFields = [];
+      if (!newTrade.symbol || newTrade.symbol.trim() === '') missingFields.push('Symbol');
+      if (!newTrade.strike || newTrade.strike.toString().trim() === '') missingFields.push('Strike');
+      if (!newTrade.expiry || newTrade.expiry.trim() === '') missingFields.push('Expiry');
+      if (!newTrade.contracts || newTrade.contracts.toString().trim() === '') missingFields.push('Contracts');
+      if (!newTrade.premium || newTrade.premium.toString().trim() === '') missingFields.push('Premium');
+      
+      if (missingFields.length > 0) {
+        alert(`Please fill in: ${missingFields.join(', ')}`);
+        console.log('Missing fields:', missingFields);
+        console.log('Current values:', {
+          symbol: newTrade.symbol,
+          strike: newTrade.strike,
+          expiry: newTrade.expiry,
+          contracts: newTrade.contracts,
+          premium: newTrade.premium
+        });
         return;
       }
     }
