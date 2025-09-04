@@ -35,10 +35,22 @@ export default function Home() {
   const audioRef = useRef(null);
 
   useEffect(() => {
-    fetchTopMovers();
+    // Initialize with default data first
     updateMarketStatus();
     initializeWatchlist();
-    fetchChartData(selectedTicker);
+    
+    // Then try to fetch live data (don't block UI if it fails)
+    const loadData = async () => {
+      try {
+        await fetchTopMovers();
+        await fetchChartData(selectedTicker);
+      } catch (error) {
+        console.log('Initial data fetch failed, using defaults:', error);
+      }
+    };
+    
+    loadData();
+    
     const interval = setInterval(() => {
       updateMarketStatus();
       refreshLiveData();
@@ -220,21 +232,22 @@ export default function Home() {
   };
 
   const fetchTopMovers = async () => {
-    const watchTickers = ['AAPL','MSFT','GOOGL','AMZN','NVDA','TSLA','META','AMD','NFLX','SPY'];
-    const movers = [];
-    
-    for (const ticker of watchTickers) {
-      try {
-        const res = await fetch(`/api/polygon?endpoint=/v2/aggs/ticker/${ticker}/prev`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.results?.[0]) {
-            const r = data.results[0];
-            const change = ((r.c - r.o) / r.o * 100);
-            movers.push({ 
-              ticker, 
-              change: change.toFixed(2), 
-              price: r.c,
+    try {
+      const watchTickers = ['AAPL','MSFT','GOOGL','AMZN','NVDA','TSLA','META','AMD','NFLX','SPY'];
+      const movers = [];
+      
+      for (const ticker of watchTickers) {
+        try {
+          const res = await fetch(`/api/polygon?endpoint=/v2/aggs/ticker/${ticker}/prev`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.results?.[0]) {
+              const r = data.results[0];
+              const change = ((r.c - r.o) / r.o * 100);
+              movers.push({ 
+                ticker, 
+                change: change.toFixed(2), 
+                price: r.c,
               volume: r.v
             });
           }
