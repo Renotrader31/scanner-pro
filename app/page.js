@@ -11,7 +11,7 @@ import AlertsPanel from './components/AlertsPanel';
 import MarketHeatmap from './components/MarketHeatmap';
 import AIRecommendations from './components/AIRecommendations';
 import MassScanner from './components/MassScanner';
-import MLTradingSystem from './components/MLTradingSystem';
+import MLTradingSystemV2 from './components/MLTradingSystemV2';
 import TechnicalDashboard from './components/TechnicalDashboard';
 import InstitutionalFlow from './components/InstitutionalFlow';
 
@@ -615,7 +615,7 @@ export default function Home() {
         {/* ML TRADING SYSTEM - Consolidated ML Learning & Trade Management */}
         {(activeTab === 'feedback' || activeTab === 'trading') && (
           <div className="bg-gray-800/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-700/50">
-            <MLTradingSystem />
+            <MLTradingSystemV2 />
           </div>
         )}
 
