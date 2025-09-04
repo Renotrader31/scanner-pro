@@ -140,6 +140,16 @@ const MLTradingSystem = () => {
     }
     
     try {
+      // Disable any external scripts that might interfere
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        // Only allow our API calls
+        if (args[0] && args[0].startsWith('/api/')) {
+          return originalFetch.apply(this, args);
+        }
+        // Block external requests during submission
+        return Promise.reject(new Error('External request blocked'));
+      };
       const tradeData = {
         action: 'ml_enhanced_trade',
         ...newTrade,
@@ -167,6 +177,9 @@ const MLTradingSystem = () => {
       const data = await response.json();
       console.log('ML Trade response:', data);
       
+      // Restore original fetch
+      window.fetch = originalFetch;
+      
       if (data.success) {
         alert('Trade logged successfully! ML system is learning from this trade.');
         setShowTradeModal(false);
@@ -178,6 +191,10 @@ const MLTradingSystem = () => {
       }
     } catch (error) {
       console.error('Error submitting trade:', error);
+      // Restore original fetch in case of error
+      if (typeof originalFetch !== 'undefined') {
+        window.fetch = originalFetch;
+      }
       alert('Error submitting trade. Please try again.');
     }
   };

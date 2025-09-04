@@ -369,10 +369,15 @@ export async function POST(request) {
     
   } catch (error) {
     console.error('Trade feedback error:', error);
+    const errorHeaders = {
+      'Content-Type': 'application/json',
+      'X-Content-Type-Options': 'nosniff'
+    };
     return NextResponse.json({ 
       error: 'Trade feedback processing failed', 
-      details: error.message 
-    }, { status: 500 });
+      details: error.message,
+      success: false 
+    }, { status: 500, headers: errorHeaders });
   }
 }
 
