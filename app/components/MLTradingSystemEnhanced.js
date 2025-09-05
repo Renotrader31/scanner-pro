@@ -351,6 +351,79 @@ const MLTradingSystemEnhanced = () => {
     }
   };
 
+  // Close an active trade
+  const closeTrade = (trade) => {
+    const exitPrice = prompt(`Enter exit price for ${trade.symbol}:`, trade.instrumentType === 'OPTION' ? trade.premium : trade.price);
+    if (!exitPrice) return;
+    
+    const outcome = prompt('Trade outcome - WIN or LOSS?', 'WIN').toUpperCase();
+    if (outcome !== 'WIN' && outcome !== 'LOSS') {
+      alert('Please enter WIN or LOSS');
+      return;
+    }
+    
+    // Calculate P/L
+    let pnl = 0;
+    let pnlPercent = 0;
+    
+    if (trade.instrumentType === 'OPTION') {
+      const entryTotal = (trade.optionDetails?.contracts || trade.contracts) * (trade.optionDetails?.premium || trade.premium) * 100;
+      const exitTotal = (trade.optionDetails?.contracts || trade.contracts) * parseFloat(exitPrice) * 100;
+      pnl = trade.side === 'BUY' ? (exitTotal - entryTotal) : (entryTotal - exitTotal);
+      pnlPercent = (pnl / entryTotal) * 100;
+    } else {
+      const entryTotal = trade.quantity * trade.price;
+      const exitTotal = trade.quantity * parseFloat(exitPrice);
+      pnl = trade.side === 'BUY' ? (exitTotal - entryTotal) : (entryTotal - exitTotal);
+      pnlPercent = (pnl / entryTotal) * 100;
+    }
+    
+    // Update the trade
+    const updatedTrade = {
+      ...trade,
+      outcome,
+      exitPrice: parseFloat(exitPrice),
+      pnl,
+      pnlPercent,
+      status: 'CLOSED',
+      closeDate: new Date().toISOString()
+    };
+    
+    // Remove from active trades
+    setActiveTrades(prev => prev.filter(t => t.trade_id !== trade.trade_id));
+    setPendingOrders(prev => prev.filter(t => t.trade_id !== trade.trade_id));
+    
+    // Add to closed trades
+    setClosedTrades(prev => [updatedTrade, ...prev]);
+    
+    // Update metrics
+    setMLMetrics(prev => {
+      const wins = closedTrades.filter(t => t.outcome === 'WIN').length + (outcome === 'WIN' ? 1 : 0);
+      const total = closedTrades.length + 1;
+      return {
+        ...prev,
+        summary: {
+          ...prev.summary,
+          activeTrades: prev.summary.activeTrades - 1,
+          winRate: Math.round((wins / total) * 100)
+        }
+      };
+    });
+    
+    alert(`Trade closed! ${outcome === 'WIN' ? '✅' : '❌'} ${trade.symbol} - P/L: ${formatCurrency(pnl)} (${formatNumber(pnlPercent)}%)`);
+    
+    // Try to update backend (but don't rely on it)
+    fetch('/api/trade-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_trade',
+        trade_id: trade.trade_id,
+        ...updatedTrade
+      })
+    }).catch(console.error);
+  };
+  
   const resetForm = () => {
     setNewTrade({
       symbol: '',
@@ -595,9 +668,17 @@ const MLTradingSystemEnhanced = () => {
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm text-gray-400">Entry: {new Date(trade.entry_date || trade.timestamp).toLocaleDateString()}</div>
-                      <div className="text-xs text-gray-500">Target: ${trade.target || 'N/A'}</div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm text-gray-400">Entry: {new Date(trade.entry_date || trade.timestamp).toLocaleDateString()}</div>
+                        <div className="text-xs text-gray-500">Target: ${trade.target || 'N/A'}</div>
+                      </div>
+                      <button
+                        onClick={() => closeTrade(trade)}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Close Trade
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -633,8 +714,16 @@ const MLTradingSystemEnhanced = () => {
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm text-gray-400">R/R: {trade.riskReward || 'N/A'}</div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm text-gray-400">R/R: {trade.riskReward || 'N/A'}</div>
+                      </div>
+                      <button
+                        onClick={() => closeTrade(trade)}
+                        className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Execute & Close
+                      </button>
                     </div>
                   </div>
                 </div>
