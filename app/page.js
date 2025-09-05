@@ -1,12 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MassScanner from './components/MassScanner';
 import AIRecommendations from './components/AIRecommendations';
 import MLTradingSystemEnhanced from './components/MLTradingSystemEnhanced';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('mass');
+  
+  // Global trade storage that persists across tab switches
+  const [globalTrades, setGlobalTrades] = useState({
+    active: [],
+    pending: [],
+    closed: []
+  });
+  
+  // Load trades from localStorage on mount
+  useEffect(() => {
+    const savedTrades = localStorage.getItem('scannerProTrades');
+    if (savedTrades) {
+      try {
+        setGlobalTrades(JSON.parse(savedTrades));
+      } catch (e) {
+        console.log('Could not load saved trades');
+      }
+    }
+  }, []);
+  
+  // Save trades to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('scannerProTrades', JSON.stringify(globalTrades));
+  }, [globalTrades]);
 
   const tabStyle = (isActive) => ({
     padding: '10px 20px',
@@ -109,7 +133,10 @@ export default function Home() {
               <h2 style={{ fontSize: '28px', marginBottom: '16px', color: '#A78BFA' }}>
                 ML Trading System Enhanced
               </h2>
-              <MLTradingSystemEnhanced />
+              <MLTradingSystemEnhanced 
+                globalTrades={globalTrades}
+                setGlobalTrades={setGlobalTrades}
+              />
             </div>
           )}
 

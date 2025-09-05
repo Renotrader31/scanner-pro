@@ -9,7 +9,7 @@ import {
   Trophy, AlertTriangle, BookOpen, Hash
 } from 'lucide-react';
 
-const MLTradingSystemEnhanced = () => {
+const MLTradingSystemEnhanced = ({ globalTrades, setGlobalTrades }) => {
   // Core state
   const [mlMetrics, setMLMetrics] = useState({
     summary: { totalTrades: 0, winRate: 0, avgConfidenceAccuracy: 50, activeTrades: 0 },
@@ -17,9 +17,36 @@ const MLTradingSystemEnhanced = () => {
     topStrategies: [],
     topTickers: []
   });
-  const [activeTrades, setActiveTrades] = useState([]);
-  const [closedTrades, setClosedTrades] = useState([]);
-  const [pendingOrders, setPendingOrders] = useState([]);
+  // Use global trades if provided, otherwise use local state
+  const [localTrades, setLocalTrades] = useState({ active: [], pending: [], closed: [] });
+  
+  const activeTrades = globalTrades?.active || localTrades.active;
+  const pendingOrders = globalTrades?.pending || localTrades.pending;
+  const closedTrades = globalTrades?.closed || localTrades.closed;
+  
+  const setActiveTrades = (value) => {
+    if (setGlobalTrades) {
+      setGlobalTrades(prev => ({ ...prev, active: typeof value === 'function' ? value(prev.active) : value }));
+    } else {
+      setLocalTrades(prev => ({ ...prev, active: typeof value === 'function' ? value(prev.active) : value }));
+    }
+  };
+  
+  const setPendingOrders = (value) => {
+    if (setGlobalTrades) {
+      setGlobalTrades(prev => ({ ...prev, pending: typeof value === 'function' ? value(prev.pending) : value }));
+    } else {
+      setLocalTrades(prev => ({ ...prev, pending: typeof value === 'function' ? value(prev.pending) : value }));
+    }
+  };
+  
+  const setClosedTrades = (value) => {
+    if (setGlobalTrades) {
+      setGlobalTrades(prev => ({ ...prev, closed: typeof value === 'function' ? value(prev.closed) : value }));
+    } else {
+      setLocalTrades(prev => ({ ...prev, closed: typeof value === 'function' ? value(prev.closed) : value }));
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState('record');
   const [showTradeModal, setShowTradeModal] = useState(false);
@@ -182,16 +209,35 @@ const MLTradingSystemEnhanced = () => {
   }, []);
 
   useEffect(() => {
-    fetchMLMetrics();
-    fetchAllTrades();
-    
-    const interval = setInterval(() => {
+    // Only fetch from API if not using global trades
+    if (!globalTrades) {
       fetchMLMetrics();
       fetchAllTrades();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, [fetchMLMetrics, fetchAllTrades]);
+      
+      const interval = setInterval(() => {
+        fetchMLMetrics();
+        fetchAllTrades();
+      }, 30000);
+      
+      return () => clearInterval(interval);
+    } else {
+      // Calculate metrics from global trades
+      const total = globalTrades.active.length + globalTrades.pending.length + globalTrades.closed.length;
+      const wins = globalTrades.closed.filter(t => t.outcome === 'WIN').length;
+      const winRate = globalTrades.closed.length > 0 ? Math.round((wins / globalTrades.closed.length) * 100) || 0 : 0;
+      
+      setMLMetrics(prev => ({
+        ...prev,
+        summary: {
+          totalTrades: total,
+          winRate: winRate,
+          avgConfidenceAccuracy: 50,
+          activeTrades: globalTrades.active.length
+        }
+      }));
+      setLoading(false);
+    }
+  }, [fetchMLMetrics, fetchAllTrades, globalTrades]);
 
   // Submit trade with enhanced data
   const submitTrade = async () => {
